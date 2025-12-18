@@ -5,34 +5,42 @@ from ..entities.user import User
 
 class VideoRepositoryPort(ABC):
     @abstractmethod
-    async def save(self, video: Video) -> Video:
+    def save(self, video: Video) -> Video:
         pass
 
     @abstractmethod
-    async def get_by_id(self, video_id: str) -> Optional[Video]:
+    def get_by_id(self, video_id: str) -> Optional[Video]:
         pass
 
     @abstractmethod
-    async def find_all(self) -> List[Video]:
+    def find_all(self, offset: int = 0, limit: int = 20) -> List[Video]:
         pass
 
     @abstractmethod
-    async def list_by_creator(self, creator_id: str) -> List[Video]:
+    def count_all(self) -> int:
+        pass
+
+    @abstractmethod
+    def list_by_creator(self, creator_id: str) -> List[Video]:
+        pass
+
+    @abstractmethod
+    def delete(self, video_id: str) -> bool:
         pass
 
 class UserRepositoryPort(ABC):
     @abstractmethod
-    async def save(self, user: User) -> User:
+    def save(self, user: User) -> User:
         pass
 
     @abstractmethod
-    async def get_by_email(self, email: str) -> Optional[User]:
+    def get_by_email(self, email: str) -> Optional[User]:
         pass
 
     @abstractmethod
-    async def get_by_id(self, user_id: str) -> Optional[User]:
+    def get_by_id(self, user_id: str) -> Optional[User]:
         pass
 
     @abstractmethod
-    async def get_by_username(self, username: str) -> Optional[User]:
+    def get_by_username(self, username: str) -> Optional[User]:
         pass

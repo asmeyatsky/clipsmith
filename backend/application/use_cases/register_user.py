@@ -8,9 +8,9 @@ class RegisterUserUseCase:
     def __init__(self, user_repo: UserRepositoryPort):
         self._user_repo = user_repo
 
-    async def execute(self, dto: RegisterRequestDTO) -> UserResponseDTO:
+    def execute(self, dto: RegisterRequestDTO) -> UserResponseDTO:
         # Check if user exists
-        existing_user = await self._user_repo.get_by_email(dto.email)
+        existing_user = self._user_repo.get_by_email(dto.email)
         if existing_user:
             raise ValueError("User with this email already exists")
 
@@ -26,7 +26,7 @@ class RegisterUserUseCase:
         )
 
         # Save to Repo
-        saved_user = await self._user_repo.save(new_user)
+        saved_user = self._user_repo.save(new_user)
 
         return UserResponseDTO(
             id=saved_user.id,

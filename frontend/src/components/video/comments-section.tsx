@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { interactionService, Comment } from '@/lib/api/interactions';
 import { Send, User } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/auth-store';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 
 interface CommentsSectionProps {
     videoId: string;
@@ -63,12 +64,12 @@ export function CommentsSection({ videoId, isOpen, onClose }: CommentsSectionPro
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700">Close</button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <ScrollArea className="flex-1 p-4">
                     {comments.length === 0 ? (
                         <p className="text-center text-gray-500 py-10">No comments yet. Be the first!</p>
                     ) : (
                         comments.map((comment) => (
-                            <div key={comment.id} className="flex gap-3">
+                            <div key={comment.id} className="flex gap-3 mb-4"> {/* Added mb-4 for spacing */}
                                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                                     <User size={14} className="text-blue-600" />
                                 </div>
@@ -86,7 +87,7 @@ export function CommentsSection({ videoId, isOpen, onClose }: CommentsSectionPro
                             </div>
                         ))
                     )}
-                </div>
+                </ScrollArea>
 
                 {user ? (
                     <form onSubmit={handleSubmit} className="p-4 border-t border-gray-100 dark:border-zinc-800 flex gap-2">

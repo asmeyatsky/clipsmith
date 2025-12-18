@@ -1,9 +1,9 @@
-import { UserProfile, Video } from '@/lib/types';
+import { UserProfile, VideoResponseDTO } from '@/lib/types';
 import { User, Video as VideoIcon, Heart } from 'lucide-react';
 
 interface ProfileHeaderProps {
     user: UserProfile;
-    videos: Video[];
+    videos: VideoResponseDTO[];
 }
 
 export function ProfileHeader({ user, videos }: ProfileHeaderProps) {

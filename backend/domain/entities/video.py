@@ -14,6 +14,7 @@ class Video(Entity):
     description: str
     creator_id: str
     url: str | None = None
+    thumbnail_url: str | None = None  # New field
     status: VideoStatus = VideoStatus.UPLOADING
     views: int = 0
     likes: int = 0
@@ -21,8 +22,8 @@ class Video(Entity):
     def mark_as_processing(self) -> 'Video':
         return replace(self, status=VideoStatus.PROCESSING)
 
-    def mark_as_ready(self, url: str) -> 'Video':
-        return replace(self, status=VideoStatus.READY, url=url)
+    def mark_as_ready(self, url: str, thumbnail_url: str) -> 'Video': # Updated method
+        return replace(self, status=VideoStatus.READY, url=url, thumbnail_url=thumbnail_url)
 
     def mark_as_failed(self) -> 'Video':
         return replace(self, status=VideoStatus.FAILED)

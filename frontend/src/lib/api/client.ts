@@ -1,6 +1,10 @@
-import { useAuthStore } from './auth-store';
+import { useAuthStore } from '@/lib/auth/auth-store';
 
-const BASE_URL = 'http://localhost:8001';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+export function getBaseUrl() {
+    return BASE_URL;
+}
 
 export async function apiClient(endpoint: string, options: RequestInit = {}) {
     const { token } = useAuthStore.getState();

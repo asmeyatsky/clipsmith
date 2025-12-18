@@ -20,14 +20,7 @@ export function LoginForm() {
                 body: JSON.stringify(formData),
             });
 
-            // Ideally we should decode the token to get user info or have the backend return it
-            // For now, let's mock the user object or assume we fetch it
-            // Simple fix: Store token, and maybe fetch /me later
-            // But store expects User object. I'll create a dummy one for now or update store to be optional
-            // Better: Update backend to return User with Token OR fetch it. 
-            // I'll make a quick fix to assume we store the email from form as username for now to unblock
-
-            setAuth(data.access_token, { id: 'temp', username: 'User', email: formData.email });
+            setAuth(data.access_token, data.user);
             router.push('/');
         } catch (err: any) {
             setError(err.message || 'Login failed');

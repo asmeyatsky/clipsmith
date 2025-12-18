@@ -18,3 +18,8 @@ class UserResponseDTO(BaseModel):
     username: str
     email: str
     is_active: bool
+
+class LoginResponseDTO(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponseDTO

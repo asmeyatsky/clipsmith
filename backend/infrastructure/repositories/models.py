@@ -19,7 +19,8 @@ class VideoDB(SQLModel, table=True):
     title: str
     description: str
     creator_id: str = Field(index=True)
-    url: str
+    url: str | None = None # Corrected: url can be None
+    thumbnail_url: str | None = None # New field
     status: str
     views: int = Field(default=0)
     likes: int = Field(default=0)

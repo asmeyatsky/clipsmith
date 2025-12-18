@@ -7,14 +7,14 @@ class GetUserProfileUseCase:
         self._user_repo = user_repo
         self._video_repo = video_repo
 
-    async def execute(self, username: str) -> ProfileResponseDTO:
+    def execute(self, username: str) -> ProfileResponseDTO:
         # Get User
-        user = await self._user_repo.get_by_username(username)
+        user = self._user_repo.get_by_username(username)
         if not user:
             raise ValueError(f"User {username} not found")
 
         # Get User's Videos
-        videos = await self._video_repo.list_by_creator(user.id)
+        videos = self._video_repo.list_by_creator(user.id)
 
         # Build DTO
         return ProfileResponseDTO(
@@ -29,6 +29,7 @@ class GetUserProfileUseCase:
                     description=v.description,
                     status=v.status,
                     url=v.url,
+                    thumbnail_url=v.thumbnail_url, # Add thumbnail_url
                     views=v.views,
                     likes=v.likes
                 ) for v in videos
