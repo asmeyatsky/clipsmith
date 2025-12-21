@@ -31,7 +31,8 @@ class GetUserProfileUseCase:
                     url=v.url,
                     thumbnail_url=v.thumbnail_url, # Add thumbnail_url
                     views=v.views,
-                    likes=v.likes
+                    likes=v.likes,
+                    duration=v.duration
                 ) for v in videos
             ]
         )

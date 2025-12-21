@@ -18,5 +18,6 @@ class GetVideoByIdUseCase:
             url=video.url,
             thumbnail_url=video.thumbnail_url,
             views=video.views,
-            likes=video.likes
+            likes=video.likes,
+            duration=video.duration
         )

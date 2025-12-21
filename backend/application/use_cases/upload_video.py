@@ -49,5 +49,6 @@ class UploadVideoUseCase:
             url=None, # URL is not available yet
             thumbnail_url=None, # Thumbnail URL is not available yet
             views=saved_video.views,
-            likes=saved_video.likes
+            likes=saved_video.likes,
+            duration=saved_video.duration
         )

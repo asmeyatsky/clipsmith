@@ -2,15 +2,21 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, s
 from typing import Annotated, List
 from fastapi.security import OAuth2PasswordBearer
 
-from ...domain.ports.repository_ports import VideoRepositoryPort, UserRepositoryPort
+from ...infrastructure.queue import get_video_queue
+from ...application.tasks import generate_captions_task
+
+from ...domain.ports.repository_ports import VideoRepositoryPort, UserRepositoryPort, TipRepositoryPort
 from ...domain.ports.storage_port import StoragePort
 from ...infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
 from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
+from ...infrastructure.repositories.sqlite_tip_repo import SQLiteTipRepository
 from ...infrastructure.adapters.file_storage_adapter import FileSystemStorageAdapter
 from ...application.use_cases.upload_video import UploadVideoUseCase
 from ...application.use_cases.list_videos import ListVideosUseCase
 from ...application.use_cases.get_video_by_id import GetVideoByIdUseCase
+from ...application.use_cases.send_tip import SendTipUseCase
 from ...application.dtos.video_dto import VideoCreateDTO, VideoResponseDTO, PaginatedVideoResponseDTO
+from ...application.dtos.tip_dto import TipCreateDTO, TipResponseDTO
 from ...infrastructure.security.jwt_adapter import JWTAdapter
 
 router = APIRouter(prefix="/videos", tags=["videos"])
@@ -30,6 +36,9 @@ def get_user_repo(session: Session = Depends(get_session)) -> UserRepositoryPort
 
 def get_interaction_repo(session: Session = Depends(get_session)) -> SQLiteInteractionRepository:
     return SQLiteInteractionRepository(session)
+
+def get_tip_repo(session: Session = Depends(get_session)) -> TipRepositoryPort:
+    return SQLiteTipRepository(session)
 
 def get_storage_adapter() -> StoragePort:
     return FileSystemStorageAdapter()
@@ -176,3 +185,55 @@ def list_comments(
             created_at=c.created_at
         ) for c in comments
     ]
+
+@router.post("/{video_id}/captions/generate", status_code=status.HTTP_202_ACCEPTED)
+def trigger_caption_generation(
+    video_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    video_repo: VideoRepositoryPort = Depends(get_video_repo)
+):
+    video = video_repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+    
+    if video.creator_id != current_user["user_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to generate captions for this video")
+
+    if video.status != "READY" or not video.url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Video is not ready for caption generation")
+
+    video_queue = get_video_queue()
+    video_queue.enqueue(
+        generate_captions_task,
+        video_id,
+        job_timeout=3600 # 1 hour timeout
+    )
+    
+    return {"message": "Caption generation started", "video_id": video_id}
+
+@router.post("/{video_id}/tip", response_model=TipResponseDTO, status_code=status.HTTP_201_CREATED)
+def send_tip_to_video_creator(
+    video_id: str,
+    tip_data: TipCreateDTO,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    user_repo: UserRepositoryPort = Depends(get_user_repo),
+    video_repo: VideoRepositoryPort = Depends(get_video_repo),
+    tip_repo: TipRepositoryPort = Depends(get_tip_repo)
+):
+    # Ensure the tip is for the video's creator
+    video = video_repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+    
+    if video.creator_id != tip_data.receiver_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Receiver ID must be the video creator's ID")
+
+    if current_user["user_id"] == tip_data.receiver_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot tip yourself")
+
+    use_case = SendTipUseCase(user_repo, tip_repo, video_repo)
+    try:
+        tip_data.video_id = video_id # Ensure video_id is set in DTO
+        return use_case.execute(tip_data, current_user["user_id"])
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

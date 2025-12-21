@@ -18,12 +18,13 @@ class Video(Entity):
     status: VideoStatus = VideoStatus.UPLOADING
     views: int = 0
     likes: int = 0
+    duration: float = 0.0
     
     def mark_as_processing(self) -> 'Video':
         return replace(self, status=VideoStatus.PROCESSING)
 
-    def mark_as_ready(self, url: str, thumbnail_url: str) -> 'Video': # Updated method
-        return replace(self, status=VideoStatus.READY, url=url, thumbnail_url=thumbnail_url)
+    def mark_as_ready(self, url: str, thumbnail_url: str, duration: float) -> 'Video': # Updated method
+        return replace(self, status=VideoStatus.READY, url=url, thumbnail_url=thumbnail_url, duration=duration)
 
     def mark_as_failed(self) -> 'Video':
         return replace(self, status=VideoStatus.FAILED)

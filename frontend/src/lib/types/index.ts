@@ -12,6 +12,7 @@ export interface VideoResponseDTO {
     status: string;
     views: number;
     likes: number;
+    duration: number;
 }
 
 export interface PaginatedVideoResponse {
@@ -25,4 +26,24 @@ export interface PaginatedVideoResponse {
 export interface ProfileResponse {
     user: UserProfile;
     videos: VideoResponseDTO[];
+}
+
+export interface TipResponseDTO {
+    id: string;
+    sender_id: string;
+    receiver_id: string;
+    video_id: string | null;
+    amount: number;
+    currency: string;
+    created_at: string; // Assuming ISO string from backend
+}
+
+export interface FollowResponseDTO {
+    follower_id: string;
+    followed_id: string;
+    created_at: string;
+}
+
+export interface FollowStatusDTO {
+    is_following: boolean;
 }

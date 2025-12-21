@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { interactionService } from '@/lib/api/interactions';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { CommentsSection } from './comments-section';
-import { Play, Heart, MessageCircle, Share2, MoreHorizontal, Eye, Loader2, X } from 'lucide-react'; // Added Loader2, X
+import { Play, Heart, MessageCircle, Share2, MoreHorizontal, Eye, Loader2, X, Pencil, DollarSign } from 'lucide-react'; // Added DollarSign
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { VideoResponseDTO } from '@/lib/types'; // Import the DTO
+import { TipModal } from '@/components/modals/tip-modal'; // Import TipModal
 
 
 interface VideoProps extends VideoResponseDTO {} // Use the DTO for props, or just use VideoResponseDTO directly
 
 export function VideoCard({ video }: { video: VideoProps }) {
     const { user } = useAuthStore();
+    const router = useRouter();
     const [likes, setLikes] = useState(video.likes);
     const [isLiked, setIsLiked] = useState(false);
     const [showComments, setShowComments] = useState(false);
+    const [showTipModal, setShowTipModal] = useState(false); // New state for TipModal
     const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
@@ -44,6 +48,11 @@ export function VideoCard({ video }: { video: VideoProps }) {
         } catch (err) {
             console.error("Like failed", err);
         }
+    };
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        router.push(`/editor/${video.id}`);
     };
 
     return (
@@ -101,6 +110,16 @@ export function VideoCard({ video }: { video: VideoProps }) {
                             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors pointer-events-none" />
 
                             <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-300">
+                                {user && user.id === video.creator_id && (
+                                    <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="rounded-full bg-white/20 backdrop-blur-md border-white/20 text-white hover:bg-white/40"
+                                        onClick={handleEdit}
+                                    >
+                                        <Pencil size={18} />
+                                    </Button>
+                                )}
                                 <Button variant="secondary" size="icon" className="rounded-full bg-white/20 backdrop-blur-md border-white/20 text-white hover:bg-white/40">
                                     <Share2 size={18} />
                                 </Button>
@@ -139,6 +158,18 @@ export function VideoCard({ video }: { video: VideoProps }) {
                                         </div>
                                         <span className="text-xs font-bold drop-shadow-md">Chat</span>
                                     </button>
+
+                                    {user && user.id !== video.creator_id && ( // Only show tip button if logged in and not own video
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShowTipModal(true); }}
+                                            className="flex flex-col items-center gap-1 text-white"
+                                        >
+                                            <div className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                                                <DollarSign size={24} />
+                                            </div>
+                                            <span className="text-xs font-bold drop-shadow-md">Tip</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -161,6 +192,14 @@ export function VideoCard({ video }: { video: VideoProps }) {
                         videoId={video.id}
                         isOpen={showComments}
                         onClose={() => setShowComments(false)}
+                    />
+                )}
+                {showTipModal && (
+                    <TipModal
+                        creatorId={video.creator_id}
+                        videoId={video.id}
+                        isOpen={showTipModal}
+                        onClose={() => setShowTipModal(false)}
                     />
                 )}
             </AnimatePresence>

@@ -16,6 +16,7 @@ class VideoResponseDTO(BaseModel):
     thumbnail_url: str | None
     views: int
     likes: int
+    duration: float
 
 class PaginatedVideoResponseDTO(BaseModel):
     items: List[VideoResponseDTO]

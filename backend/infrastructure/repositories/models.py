@@ -24,6 +24,7 @@ class VideoDB(SQLModel, table=True):
     status: str
     views: int = Field(default=0)
     likes: int = Field(default=0)
+    duration: float = Field(default=0.0)
     created_at: datetime = Field(default_factory=datetime.now)
 
 class LikeDB(SQLModel, table=True):
@@ -37,4 +38,27 @@ class CommentDB(SQLModel, table=True):
     video_id: str = Field(index=True)
     content: str
     username: str # Denormalized for display speed
+    created_at: datetime = Field(default_factory=datetime.now)
+
+class CaptionDB(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    text: str
+    start_time: float
+    end_time: float
+    language: str = Field(default="en")
+    created_at: datetime = Field(default_factory=datetime.now)
+
+class TipDB(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    sender_id: str = Field(index=True)
+    receiver_id: str = Field(index=True)
+    video_id: str | None = Field(default=None, index=True)
+    amount: float
+    currency: str = Field(default="USD")
+    created_at: datetime = Field(default_factory=datetime.now)
+
+class FollowDB(SQLModel, table=True):
+    follower_id: str = Field(primary_key=True, index=True)
+    followed_id: str = Field(primary_key=True, index=True)
     created_at: datetime = Field(default_factory=datetime.now)
