@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Video, Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera } from 'lucide-react'; // Import Camera
+import { Video, Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera, Gauge } from 'lucide-react'; // Import all icons needed
 import { Timeline } from '@/components/editor/timeline';
 import { useEffect, useState, useRef } from 'react';
 import { videoService } from '@/lib/api/video';
@@ -17,11 +17,13 @@ export default function EditorPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [playhead, setPlayhead] = useState(0);
     const router = useRouter();
+    // States for simulated effects
     const [isChromaKeyEnabled, setIsChromaKeyEnabled] = useState(false);
-    const [selectedPreset, setSelectedPreset] = useState<string | null>(null); // New state for color grading
+    const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
     const [mainVolume, setMainVolume] = useState(100);
     const [musicVolume, setMusicVolume] = useState(50);
     const [sfxVolume, setSfxVolume] = useState(70);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1.0); // New state for playback speed
 
     useEffect(() => {
         const fetchVideo = async () => {
@@ -84,6 +86,10 @@ export default function EditorPage() {
         alert(`Color Grading Preset "${presetName}" applied (simulated)`);
     };
 
+    const handleSceneDetection = () => {
+        alert("AI Scene Detection triggered (simulated)! Auto-cutting would happen here.");
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
             {/* Sidebar */}
@@ -135,6 +141,7 @@ export default function EditorPage() {
                                 src={video.url!}
                                 controls
                                 className="w-full h-full"
+                                playbackRate={playbackSpeed} // Apply simulated playback speed
                             />
                         )}
                     </div>
@@ -263,13 +270,48 @@ export default function EditorPage() {
                                 <Camera size={18} /> AI Scene Detection (Simulated)
                             </h3>
                             <button
-                                onClick={() => alert("AI Scene Detection triggered (simulated)! Auto-cutting would happen here.")}
+                                onClick={handleSceneDetection}
                                 className="w-full px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white font-semibold transition-colors"
                             >
                                 Detect Scenes & Auto-Cut
                             </button>
                             <p className="text-xs text-gray-500 mt-2">
                                 Analyze video content to automatically detect scene changes and create cuts.
+                            </p>
+                        </div>
+
+                        {/* Simulated Variable Speed Controls Section */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                            <h3 className="text-md font-semibold mb-2 flex items-center gap-2">
+                                <Gauge size={18} /> Variable Speed (Simulated)
+                            </h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label htmlFor="playbackSpeed" className="text-sm text-gray-700 dark:text-gray-300">
+                                        Playback Speed: {playbackSpeed.toFixed(1)}x
+                                    </label>
+                                    <input
+                                        type="range"
+                                        id="playbackSpeed"
+                                        min="0.1"
+                                        max="5.0"
+                                        step="0.1"
+                                        value={playbackSpeed}
+                                        onChange={(e) => {
+                                            const newSpeed = parseFloat(e.target.value);
+                                            setPlaybackSpeed(newSpeed);
+                                            // Simulate applying speed to video playback
+                                            if (videoRef.current) {
+                                                videoRef.current.playbackRate = newSpeed;
+                                            }
+                                            alert(`Playback Speed set to ${newSpeed.toFixed(1)}x (simulated)`);
+                                        }}
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                                Adjust the playback speed of the selected clip.
                             </p>
                         </div>
                     </div>
