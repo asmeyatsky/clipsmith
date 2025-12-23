@@ -1,14 +1,44 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { LogOut, User, Video, Plus, Search } from 'lucide-react';
+import { LogOut, User, Video, Search, Moon, Sun, X } from 'lucide-react';
 import { UploadModal } from '@/components/video/upload-modal';
 
 export function Navbar() {
     const { user, logout } = useAuthStore();
+    const router = useRouter();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        setIsDark(isDarkMode);
+        document.documentElement.classList.toggle('dark', isDarkMode);
+    }, []);
+
+    const toggleDarkMode = () => {
+        const newDark = !isDark;
+        setIsDark(newDark);
+        localStorage.setItem('theme', newDark ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', newDark);
+    };
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+            setShowSearch(false);
+            setSearchQuery('');
+        }
+    };
 
     return (
         <motion.nav
@@ -27,6 +57,30 @@ export function Navbar() {
                 </Link>
 
                 <div className="flex items-center gap-4">
+                    {showSearch ? (
+                        <form onSubmit={handleSearch} className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search videos..."
+                                className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+                                autoFocus
+                            />
+                            <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={() => setShowSearch(false)}>
+                                <X className="w-4 h-4" />
+                            </Button>
+                        </form>
+                    ) : (
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900" onClick={() => setShowSearch(true)}>
+                            <Search className="w-5 h-5" />
+                        </Button>
+                    )}
+
+                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900" onClick={toggleDarkMode}>
+                        {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                    </Button>
+
                     {user ? (
                         <div className="flex items-center gap-3">
                             <UploadModal onUploadSuccess={() => window.location.reload()} />

@@ -62,3 +62,11 @@ class FollowDB(SQLModel, table=True):
     follower_id: str = Field(primary_key=True, index=True)
     followed_id: str = Field(primary_key=True, index=True)
     created_at: datetime = Field(default_factory=datetime.now)
+
+class PasswordResetDB(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    token: str = Field(unique=True, index=True)
+    expires_at: datetime
+    used: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.now)

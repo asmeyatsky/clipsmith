@@ -6,7 +6,7 @@ export function getBaseUrl() {
     return BASE_URL;
 }
 
-export async function apiClient(endpoint: string, options: RequestInit = {}) {
+export async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const { token } = useAuthStore.getState();
 
     const headers = {
@@ -25,5 +25,5 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
         throw new Error(error.detail || 'API request failed');
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
 }

@@ -31,6 +31,18 @@ class VideoRepositoryPort(ABC):
     def delete(self, video_id: str) -> bool:
         pass
 
+    @abstractmethod
+    def increment_views(self, video_id: str) -> Optional[Video]:
+        pass
+
+    @abstractmethod
+    def search(self, query: str, offset: int = 0, limit: int = 20) -> List[Video]:
+        pass
+
+    @abstractmethod
+    def count_search(self, query: str) -> int:
+        pass
+
 class UserRepositoryPort(ABC):
     @abstractmethod
     def save(self, user: User) -> User:

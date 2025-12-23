@@ -43,3 +43,42 @@ class SQLiteVideoRepository(VideoRepositoryPort):
             self.session.commit()
             return True
         return False
+
+    def increment_views(self, video_id: str) -> Optional[Video]:
+        video_db = self.session.get(VideoDB, video_id)
+        if video_db:
+            video_db.views = (video_db.views or 0) + 1
+            self.session.add(video_db)
+            self.session.commit()
+            self.session.refresh(video_db)
+            return Video(**video_db.model_dump())
+        return None
+
+    def search(self, query: str, offset: int = 0, limit: int = 20) -> List[Video]:
+        search_pattern = f"%{query}%"
+        statement = (
+            select(VideoDB)
+            .where(
+                (VideoDB.title.ilike(search_pattern)) |
+                (VideoDB.description.ilike(search_pattern))
+            )
+            .where(VideoDB.status == "READY")
+            .order_by(VideoDB.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        results = self.session.exec(statement).all()
+        return [Video(**v.model_dump()) for v in results]
+
+    def count_search(self, query: str) -> int:
+        search_pattern = f"%{query}%"
+        statement = (
+            select(func.count())
+            .select_from(VideoDB)
+            .where(
+                (VideoDB.title.ilike(search_pattern)) |
+                (VideoDB.description.ilike(search_pattern))
+            )
+            .where(VideoDB.status == "READY")
+        )
+        return self.session.exec(statement).one()

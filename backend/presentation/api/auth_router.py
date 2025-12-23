@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated
+from datetime import datetime, timedelta
+import secrets
 from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from ...application.use_cases.register_user import RegisterUserUseCase
 from ...application.use_cases.authenticate_user import AuthenticateUserUseCase
-from ...application.dtos.auth_dto import RegisterRequestDTO, LoginRequestDTO, LoginResponseDTO, UserResponseDTO
+from ...application.dtos.auth_dto import (
+    RegisterRequestDTO, LoginRequestDTO, LoginResponseDTO, UserResponseDTO,
+    PasswordResetRequestDTO, PasswordResetConfirmDTO
+)
 from ...infrastructure.repositories.database import get_session
 from ...infrastructure.security.jwt_adapter import JWTAdapter
-from sqlmodel import Session
+from ...infrastructure.security.security_adapter import SecurityAdapter
+from ...infrastructure.repositories.models import PasswordResetDB
+from sqlmodel import Session, select
 from ...domain.ports.repository_ports import UserRepositoryPort
 
 
@@ -75,3 +82,80 @@ def get_me(
         email=current_user.email,
         is_active=current_user.is_active
     )
+
+@router.post("/password-reset/request")
+def request_password_reset(
+    dto: PasswordResetRequestDTO,
+    repo: UserRepositoryPort = Depends(get_user_repo),
+    session: Session = Depends(get_session)
+):
+    user = repo.get_by_email(dto.email)
+    if not user:
+        # Return success even if email not found (security best practice)
+        return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+    # Generate a secure token
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now() + timedelta(hours=1)
+
+    # Store the token
+    reset_token = PasswordResetDB(
+        user_id=user.id,
+        token=token,
+        expires_at=expires_at
+    )
+    session.add(reset_token)
+    session.commit()
+
+    # In a real application, you would send an email here
+    # For now, we return the token (in production, never expose the token in the response)
+    return {
+        "message": "If an account with that email exists, a password reset link has been sent.",
+        "debug_token": token  # Remove this in production
+    }
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    dto: PasswordResetConfirmDTO,
+    repo: UserRepositoryPort = Depends(get_user_repo),
+    session: Session = Depends(get_session)
+):
+    # Find the reset token
+    statement = select(PasswordResetDB).where(
+        PasswordResetDB.token == dto.token,
+        PasswordResetDB.used == False,
+        PasswordResetDB.expires_at > datetime.now()
+    )
+    reset_record = session.exec(statement).first()
+
+    if not reset_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+
+    # Get the user
+    user = repo.get_by_id(reset_record.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not found"
+        )
+
+    # Hash the new password and update
+    hashed_password = SecurityAdapter.hash_password(dto.new_password)
+
+    # Update user password directly through the session
+    from ...infrastructure.repositories.models import UserDB
+    user_db = session.get(UserDB, user.id)
+    if user_db:
+        user_db.hashed_password = hashed_password
+        user_db.updated_at = datetime.now()
+        session.add(user_db)
+
+    # Mark token as used
+    reset_record.used = True
+    session.add(reset_record)
+    session.commit()
+
+    return {"message": "Password has been reset successfully"}

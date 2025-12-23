@@ -5,11 +5,12 @@ from fastapi.security import OAuth2PasswordBearer
 from ...infrastructure.queue import get_video_queue
 from ...application.tasks import generate_captions_task
 
-from ...domain.ports.repository_ports import VideoRepositoryPort, UserRepositoryPort, TipRepositoryPort
+from ...domain.ports.repository_ports import VideoRepositoryPort, UserRepositoryPort, TipRepositoryPort, CaptionRepositoryPort
 from ...domain.ports.storage_port import StoragePort
 from ...infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
 from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from ...infrastructure.repositories.sqlite_tip_repo import SQLiteTipRepository
+from ...infrastructure.repositories.sqlite_caption_repo import SQLiteCaptionRepository
 from ...infrastructure.adapters.file_storage_adapter import FileSystemStorageAdapter
 from ...application.use_cases.upload_video import UploadVideoUseCase
 from ...application.use_cases.list_videos import ListVideosUseCase
@@ -17,6 +18,7 @@ from ...application.use_cases.get_video_by_id import GetVideoByIdUseCase
 from ...application.use_cases.send_tip import SendTipUseCase
 from ...application.dtos.video_dto import VideoCreateDTO, VideoResponseDTO, PaginatedVideoResponseDTO
 from ...application.dtos.tip_dto import TipCreateDTO, TipResponseDTO
+from ...application.dtos.caption_dto import CaptionResponseDTO
 from ...infrastructure.security.jwt_adapter import JWTAdapter
 
 router = APIRouter(prefix="/videos", tags=["videos"])
@@ -39,6 +41,9 @@ def get_interaction_repo(session: Session = Depends(get_session)) -> SQLiteInter
 
 def get_tip_repo(session: Session = Depends(get_session)) -> TipRepositoryPort:
     return SQLiteTipRepository(session)
+
+def get_caption_repo(session: Session = Depends(get_session)) -> CaptionRepositoryPort:
+    return SQLiteCaptionRepository(session)
 
 def get_storage_adapter() -> StoragePort:
     return FileSystemStorageAdapter()
@@ -73,6 +78,42 @@ def list_videos(
     use_case = ListVideosUseCase(repo)
     return use_case.execute(page=page, page_size=page_size)
 
+@router.get("/search", response_model=PaginatedVideoResponseDTO)
+def search_videos(
+    q: str,
+    page: int = 1,
+    page_size: int = 20,
+    repo: VideoRepositoryPort = Depends(get_video_repo)
+):
+    offset = (page - 1) * page_size
+    videos = repo.search(q, offset=offset, limit=page_size)
+    total = repo.count_search(q)
+
+    video_responses = [
+        VideoResponseDTO(
+            id=v.id,
+            title=v.title,
+            description=v.description,
+            creator_id=v.creator_id,
+            video_url=v.url,
+            thumbnail_url=v.thumbnail_url,
+            status=v.status,
+            views=v.views,
+            likes=v.likes,
+            duration=v.duration,
+            created_at=v.created_at
+        )
+        for v in videos
+    ]
+
+    return PaginatedVideoResponseDTO(
+        videos=video_responses,
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(offset + len(videos)) < total
+    )
+
 @router.post("/", response_model=VideoResponseDTO)
 def upload_video(
     title: Annotated[str, Form()],
@@ -102,6 +143,16 @@ def get_video_by_id(
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
     return video
+
+@router.post("/{video_id}/view")
+def increment_video_views(
+    video_id: str,
+    repo: VideoRepositoryPort = Depends(get_video_repo)
+):
+    video = repo.increment_views(video_id)
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+    return {"views": video.views}
 
 @router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_video(
@@ -210,6 +261,28 @@ def trigger_caption_generation(
     )
     
     return {"message": "Caption generation started", "video_id": video_id}
+
+@router.get("/{video_id}/captions", response_model=List[CaptionResponseDTO])
+def get_video_captions(
+    video_id: str,
+    video_repo: VideoRepositoryPort = Depends(get_video_repo),
+    caption_repo: CaptionRepositoryPort = Depends(get_caption_repo)
+):
+    video = video_repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+
+    captions = caption_repo.get_by_video_id(video_id)
+    return [
+        CaptionResponseDTO(
+            id=c.id,
+            video_id=c.video_id,
+            text=c.text,
+            start_time=c.start_time,
+            end_time=c.end_time,
+            language=c.language
+        ) for c in captions
+    ]
 
 @router.post("/{video_id}/tip", response_model=TipResponseDTO, status_code=status.HTTP_201_CREATED)
 def send_tip_to_video_creator(

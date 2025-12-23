@@ -7,6 +7,7 @@ export interface VideoResponseDTO {
     id: string;
     title: string;
     description: string;
+    creator_id: string;
     url: string | null;
     thumbnail_url?: string | null;
     status: string;
@@ -21,6 +22,14 @@ export interface PaginatedVideoResponse {
     page: number;
     page_size: number;
     total_pages: number;
+}
+
+export interface PaginatedVideos {
+    videos: VideoResponseDTO[];
+    total: number;
+    page: number;
+    page_size: number;
+    has_more: boolean;
 }
 
 export interface ProfileResponse {

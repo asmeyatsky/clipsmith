@@ -23,3 +23,10 @@ class LoginResponseDTO(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponseDTO
+
+class PasswordResetRequestDTO(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirmDTO(BaseModel):
+    token: str
+    new_password: str

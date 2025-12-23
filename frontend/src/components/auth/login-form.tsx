@@ -47,7 +47,12 @@ export function LoginForm() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Password</label>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                        <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                            Forgot password?
+                        </Link>
+                    </div>
                     <input
                         type="password"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all dark:bg-zinc-800 dark:border-zinc-700"

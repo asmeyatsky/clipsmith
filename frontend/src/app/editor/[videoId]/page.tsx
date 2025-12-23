@@ -1,10 +1,10 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Video, Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera, Gauge } from 'lucide-react'; // Import all icons needed
+import { Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera, Gauge } from 'lucide-react';
 import { Timeline } from '@/components/editor/timeline';
-import { useEffect, useState, useRef } from 'react';
-import { videoService } from '@/lib/api/video';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { videoService, CaptionDTO } from '@/lib/api/video';
 import { VideoResponseDTO } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
@@ -17,6 +17,10 @@ export default function EditorPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [playhead, setPlayhead] = useState(0);
     const router = useRouter();
+    // Caption states
+    const [captions, setCaptions] = useState<CaptionDTO[]>([]);
+    const [showCaptions, setShowCaptions] = useState(true);
+
     // States for simulated effects
     const [isChromaKeyEnabled, setIsChromaKeyEnabled] = useState(false);
     const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
@@ -32,6 +36,9 @@ export default function EditorPage() {
                 setLoading(true);
                 const data = await videoService.getById(videoId);
                 setVideo(data);
+                // Also fetch captions
+                const captionData = await videoService.getCaptions(videoId);
+                setCaptions(captionData);
             } catch (err: any) {
                 setError(err.message || 'Failed to load video');
             } finally {
@@ -41,6 +48,13 @@ export default function EditorPage() {
 
         fetchVideo();
     }, [videoId]);
+
+    // Get current caption based on playhead
+    const currentCaption = useMemo(() => {
+        return captions.find(
+            caption => playhead >= caption.start_time && playhead <= caption.end_time
+        );
+    }, [captions, playhead]);
 
     useEffect(() => {
         const videoElement = videoRef.current;
@@ -132,17 +146,40 @@ export default function EditorPage() {
                 {/* Main Content */}
                 <div className="flex-1 flex p-4">
                     {/* Video Preview */}
-                    <div className="w-2/3 bg-black rounded-lg flex items-center justify-center">
-                        {loading && <p>Loading...</p>}
-                        {error && <p>{error}</p>}
+                    <div className="w-2/3 bg-black rounded-lg flex items-center justify-center relative">
+                        {loading && <p className="text-white">Loading...</p>}
+                        {error && <p className="text-red-500">{error}</p>}
                         {video && (
-                            <video
-                                ref={videoRef}
-                                src={video.url!}
-                                controls
-                                className="w-full h-full"
-                                playbackRate={playbackSpeed} // Apply simulated playback speed
-                            />
+                            <>
+                                <video
+                                    ref={videoRef}
+                                    src={video.url!}
+                                    controls
+                                    className="w-full h-full"
+                                />
+                                {/* Caption Overlay */}
+                                {showCaptions && currentCaption && (
+                                    <div className="absolute bottom-16 left-0 right-0 flex justify-center pointer-events-none">
+                                        <div className="bg-black/80 text-white px-4 py-2 rounded-lg text-lg font-medium max-w-[80%] text-center">
+                                            {currentCaption.text}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        {/* Caption toggle button */}
+                        {captions.length > 0 && (
+                            <button
+                                onClick={() => setShowCaptions(!showCaptions)}
+                                className={`absolute top-4 right-4 p-2 rounded-lg transition-colors ${
+                                    showCaptions
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-gray-700 text-gray-300'
+                                }`}
+                                title={showCaptions ? 'Hide captions' : 'Show captions'}
+                            >
+                                <Subtitles size={20} />
+                            </button>
                         )}
                     </div>
 
