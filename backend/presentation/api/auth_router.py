@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated
 from datetime import datetime, timedelta
 import secrets
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from ...application.use_cases.register_user import RegisterUserUseCase
 from ...application.use_cases.authenticate_user import AuthenticateUserUseCase
@@ -47,7 +51,9 @@ def get_current_user(
     return user
 
 @router.post("/register", response_model=UserResponseDTO, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 def register(
+    request: Request,
     dto: RegisterRequestDTO,
     repo: UserRepositoryPort = Depends(get_user_repo)
 ):
@@ -58,7 +64,9 @@ def register(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/login", response_model=LoginResponseDTO)
+@limiter.limit("10/minute")
 def login(
+    request: Request,
     dto: LoginRequestDTO,
     repo: UserRepositoryPort = Depends(get_user_repo)
 ):
@@ -84,7 +92,9 @@ def get_me(
     )
 
 @router.post("/password-reset/request")
+@limiter.limit("3/minute")
 def request_password_reset(
+    request: Request,
     dto: PasswordResetRequestDTO,
     repo: UserRepositoryPort = Depends(get_user_repo),
     session: Session = Depends(get_session)
@@ -107,15 +117,18 @@ def request_password_reset(
     session.add(reset_token)
     session.commit()
 
-    # In a real application, you would send an email here
-    # For now, we return the token (in production, never expose the token in the response)
+    # In production, send an email with the reset link:
+    # reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
+    # send_email(user.email, "Password Reset", f"Click here to reset: {reset_url}")
+
     return {
-        "message": "If an account with that email exists, a password reset link has been sent.",
-        "debug_token": token  # Remove this in production
+        "message": "If an account with that email exists, a password reset link has been sent."
     }
 
 @router.post("/password-reset/confirm")
+@limiter.limit("5/minute")
 def confirm_password_reset(
+    request: Request,
     dto: PasswordResetConfirmDTO,
     repo: UserRepositoryPort = Depends(get_user_repo),
     session: Session = Depends(get_session)
