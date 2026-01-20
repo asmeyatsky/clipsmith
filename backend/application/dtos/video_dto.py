@@ -11,12 +11,14 @@ class VideoResponseDTO(BaseModel):
     id: str
     title: str
     description: str
+    creator_id: str
     status: VideoStatus
     url: str | None
     thumbnail_url: str | None
     views: int
     likes: int
     duration: float
+    created_at: str | None = None
 
 class PaginatedVideoResponseDTO(BaseModel):
     items: List[VideoResponseDTO]

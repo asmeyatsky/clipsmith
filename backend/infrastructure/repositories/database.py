@@ -1,4 +1,5 @@
 from typing import Generator
+from contextlib import contextmanager
 from sqlmodel import create_engine, SQLModel, Session
 
 sqlite_file_name = "database.db"
@@ -11,5 +12,15 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
 def get_session() -> Generator[Session, None, None]:
+    """FastAPI dependency injection compatible session generator."""
     with Session(engine) as session:
         yield session
+
+@contextmanager
+def get_task_session():
+    """Context manager for getting a session in background tasks."""
+    session = Session(engine)
+    try:
+        yield session
+    finally:
+        session.close()

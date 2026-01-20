@@ -1,3 +1,4 @@
+import math
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from typing import Annotated, List
 from fastapi.security import OAuth2PasswordBearer
@@ -95,7 +96,7 @@ def search_videos(
             title=v.title,
             description=v.description,
             creator_id=v.creator_id,
-            video_url=v.url,
+            url=v.url,
             thumbnail_url=v.thumbnail_url,
             status=v.status,
             views=v.views,
@@ -106,13 +107,61 @@ def search_videos(
         for v in videos
     ]
 
+    total_pages = math.ceil(total / page_size) if total > 0 else 1
+
     return PaginatedVideoResponseDTO(
-        videos=video_responses,
+        items=video_responses,
         total=total,
         page=page,
         page_size=page_size,
-        has_more=(offset + len(videos)) < total
+        total_pages=total_pages
     )
+
+# File validation constants
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
+ALLOWED_CONTENT_TYPES = {
+    "video/mp4", "video/quicktime", "video/x-msvideo",
+    "video/x-matroska", "video/webm", "video/x-m4v"
+}
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
+
+
+def validate_video_file(file: UploadFile) -> None:
+    """Validate uploaded video file for size and format."""
+    # Check content type
+    if file.content_type and file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed types: {', '.join(ALLOWED_CONTENT_TYPES)}"
+        )
+
+    # Check file extension
+    if file.filename:
+        import os as os_path
+        _, ext = os_path.splitext(file.filename.lower())
+        if ext not in ALLOWED_VIDEO_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid file extension. Allowed extensions: {', '.join(ALLOWED_VIDEO_EXTENSIONS)}"
+            )
+
+    # Check file size by reading content length or seeking to end
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Reset to beginning
+
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB"
+        )
+
+    if file_size == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty file uploaded"
+        )
+
 
 @router.post("/", response_model=VideoResponseDTO)
 def upload_video(
@@ -123,13 +172,16 @@ def upload_video(
     repo: VideoRepositoryPort = Depends(get_video_repo),
     storage: StoragePort = Depends(get_storage_adapter)
 ):
+    # Validate the uploaded file
+    validate_video_file(file)
+
     # DTO creation from form data
     dto = VideoCreateDTO(
         title=title,
         description=description,
         creator_id=current_user["user_id"]
     )
-    
+
     use_case = UploadVideoUseCase(repo, storage)
     return use_case.execute(dto, file.file, file.filename)
 
@@ -171,8 +223,8 @@ def delete_video(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this video")
 
     # Delete video files from storage
-    if video.video_url:
-        storage.delete(video.video_url)
+    if video.url:
+        storage.delete(video.url)
     if video.thumbnail_url:
         storage.delete(video.thumbnail_url)
 

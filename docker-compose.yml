@@ -42,9 +42,12 @@ services:
       - PYTHONUNBUFFERED=1
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - BACKEND_URL=http://backend:8000
     depends_on:
       redis:
         condition: service_healthy
+      backend:
+        condition: service_started
 
   frontend:
     build:

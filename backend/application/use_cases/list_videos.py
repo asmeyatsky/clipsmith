@@ -23,6 +23,7 @@ class ListVideosUseCase:
                 id=v.id,
                 title=v.title,
                 description=v.description,
+                creator_id=v.creator_id,
                 status=v.status,
                 url=v.url,
                 thumbnail_url=v.thumbnail_url,

@@ -14,6 +14,7 @@ class GetVideoByIdUseCase:
             id=video.id,
             title=video.title,
             description=video.description,
+            creator_id=video.creator_id,
             status=video.status,
             url=video.url,
             thumbnail_url=video.thumbnail_url,
