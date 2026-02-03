@@ -119,3 +119,36 @@ class ContentModerationDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     reviewed_at: datetime | None = Field(default=None)
     completed_at: datetime | None = Field(default=None)
+
+
+class EmailVerificationDB(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    email: str = Field(index=True)
+    token: str = Field(unique=True, index=True)
+    status: str = Field(default="pending", index=True)
+    expires_at: datetime = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+    verified_at: datetime | None = Field(default=None)
+
+
+class TwoFactorSecretDB(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    method: str = Field(index=True)
+    secret: str = Field(unique=True)  # Encrypted secret
+    backup_codes: str | None = Field(default=None)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+    last_used_at: datetime | None = Field(default=None)
+
+
+class TwoFactorVerificationDB(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    secret_id: str = Field(index=True)
+    code: str = Field(index=True)
+    expires_at: datetime = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+    used_at: datetime | None = Field(default=None)
+    is_verified: bool = Field(default=False)
