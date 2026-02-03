@@ -58,3 +58,6 @@ boto3==1.35.11
 botocore==1.35.11
 pyotp==2.9.0  # For 2FA
 python-jose[cryptography]==3.3.0  # Enhanced JWT with 2FA support
+sentry-sdk[fastapi]==2.14.0  # Error tracking and performance monitoring
+structlog==23.3.0  # Structured logging
+python-json-logger==2.0.8  # JSON logging utilities

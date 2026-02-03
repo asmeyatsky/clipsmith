@@ -8,6 +8,12 @@ from .presentation.api.feed_router import router as feed_router
 from .presentation.api.notification_router import router as notification_router
 from .presentation.api.hashtag_router import router as hashtag_router
 from .presentation.api.moderation_router import router as moderation_router
+from .presentation.api.monitoring_router import router as monitoring_router
+from .presentation.middleware.monitoring_middleware import (
+    MonitoringMiddleware,
+    HealthCheckMiddleware,
+    UserActivityMiddleware,
+)
 from .infrastructure.repositories.database import create_db_and_tables
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -28,6 +34,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="clipsmith API", lifespan=lifespan)
+
+# Add monitoring middleware
+app.add_middleware(MonitoringMiddleware)
+app.add_middleware(HealthCheckMiddleware)
+app.add_middleware(UserActivityMiddleware)
 
 # Add rate limiter
 app.state.limiter = limiter
