@@ -5,6 +5,7 @@ from ...domain.ports.repository_ports import VideoRepositoryPort
 from .database import engine
 from .models import VideoDB
 
+
 class SQLiteVideoRepository(VideoRepositoryPort):
     def __init__(self, session: Session):
         self.session = session
@@ -23,7 +24,12 @@ class SQLiteVideoRepository(VideoRepositoryPort):
         return None
 
     def find_all(self, offset: int = 0, limit: int = 20) -> List[Video]:
-        statement = select(VideoDB).order_by(VideoDB.created_at.desc()).offset(offset).limit(limit)
+        statement = (
+            select(VideoDB)
+            .order_by(VideoDB.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
         results = self.session.exec(statement).all()
         return [Video(**v.model_dump()) for v in results]
 
@@ -32,7 +38,11 @@ class SQLiteVideoRepository(VideoRepositoryPort):
         return self.session.exec(statement).one()
 
     def list_by_creator(self, creator_id: str) -> List[Video]:
-        statement = select(VideoDB).where(VideoDB.creator_id == creator_id).order_by(VideoDB.created_at.desc())
+        statement = (
+            select(VideoDB)
+            .where(VideoDB.creator_id == creator_id)
+            .order_by(VideoDB.created_at.desc())
+        )
         results = self.session.exec(statement).all()
         return [Video(**v.model_dump()) for v in results]
 
@@ -59,8 +69,8 @@ class SQLiteVideoRepository(VideoRepositoryPort):
         statement = (
             select(VideoDB)
             .where(
-                (VideoDB.title.ilike(search_pattern)) |
-                (VideoDB.description.ilike(search_pattern))
+                (VideoDB.title.ilike(search_pattern))
+                | (VideoDB.description.ilike(search_pattern))
             )
             .where(VideoDB.status == "READY")
             .order_by(VideoDB.created_at.desc())
@@ -76,9 +86,34 @@ class SQLiteVideoRepository(VideoRepositoryPort):
             select(func.count())
             .select_from(VideoDB)
             .where(
-                (VideoDB.title.ilike(search_pattern)) |
-                (VideoDB.description.ilike(search_pattern))
+                (VideoDB.title.ilike(search_pattern))
+                | (VideoDB.description.ilike(search_pattern))
             )
+            .where(VideoDB.status == "READY")
+        )
+        return self.session.exec(statement).one()
+
+    def get_videos_from_creators(
+        self, creator_ids: List[str], offset: int = 0, limit: int = 20
+    ) -> List[Video]:
+        """Get videos from specific creators."""
+        statement = (
+            select(VideoDB)
+            .where(VideoDB.creator_id.in_(creator_ids))
+            .where(VideoDB.status == "READY")
+            .order_by(VideoDB.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        results = self.session.exec(statement).all()
+        return [Video(**v.model_dump()) for v in results]
+
+    def count_videos_from_creators(self, creator_ids: List[str]) -> int:
+        """Count videos from specific creators."""
+        statement = (
+            select(func.count())
+            .select_from(VideoDB)
+            .where(VideoDB.creator_id.in_(creator_ids))
             .where(VideoDB.status == "READY")
         )
         return self.session.exec(statement).one()
