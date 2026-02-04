@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: clipsmith-postgres
+    environment:
+      POSTGRES_DB: clipsmith
+      POSTGRES_USER: clipsmith
+      POSTGRES_PASSWORD: clipsmith_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Cache
+  redis:
+    image: redis:7-alpine
+    container_name: clipsmith-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: clipsmith-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://clipsmith:clipsmith_password@postgres:5432/clipsmith
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: clipsmith-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
