@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict
 from ..entities.video import Video
 from ..entities.user import User
 from ..entities.caption import Caption  # Import Caption entity
@@ -7,7 +7,19 @@ from ..entities.tip import Tip  # Import Tip entity
 from ..entities.follow import Follow  # Import Follow entity
 from ..entities.notification import Notification, NotificationStatus
 from ..entities.hashtag import Hashtag
-from ..entities.content_moderation import ContentModeration, ModerationStatus
+from ..entities.content_moderation import (
+    ContentModeration,
+    ModerationStatus,
+    ModerationSeverity,
+)
+from ..entities.video_editor import (
+    VideoProject,
+    VideoEditorAsset,
+    VideoEditorTransition,
+    VideoEditorTrack,
+    VideoEditorCaption,
+    VideoProjectStatus,
+)
 
 
 class VideoRepositoryPort(ABC):
@@ -217,7 +229,7 @@ class ContentModerationRepositoryPort(ABC):
 
     @abstractmethod
     def get_flagged_content(
-        self, severity: Optional["ModerationSeverity"] = None, limit: int = 50
+        self, severity: Optional[ModerationSeverity] = None, limit: int = 50
     ) -> List["ContentModeration"]:
         pass
 

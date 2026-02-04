@@ -9,6 +9,9 @@ from .presentation.api.notification_router import router as notification_router
 from .presentation.api.hashtag_router import router as hashtag_router
 from .presentation.api.moderation_router import router as moderation_router
 from .presentation.api.monitoring_router import router as monitoring_router
+from .presentation.api.video_editor_router import router as video_editor_router
+from .presentation.api.payment_router import router as payment_router
+from .presentation.api.analytics_router import router as analytics_router
 from .presentation.middleware.monitoring_middleware import (
     MonitoringMiddleware,
     HealthCheckMiddleware,
@@ -67,6 +70,9 @@ app.include_router(feed_router)
 app.include_router(notification_router)
 app.include_router(hashtag_router)
 app.include_router(moderation_router)
+app.include_router(video_editor_router)
+app.include_router(payment_router)
+app.include_router(analytics_router)
 
 
 @app.get("/")

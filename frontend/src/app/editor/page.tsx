@@ -1,0 +1,7 @@
+'use client';
+
+import { EditorApp } from '@/components/editor/editor-app';
+
+export default function EditorPage() {
+    return <EditorApp />;
+}
