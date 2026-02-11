@@ -6,7 +6,7 @@ export function getBaseUrl() {
     return BASE_URL;
 }
 
-export async function apiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function apiClient<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const { token } = useAuthStore.getState();
 
     const headers = {
@@ -21,8 +21,8 @@ export async function apiClient<T = any>(endpoint: string, options: RequestInit 
     });
 
     if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || 'API request failed');
+        const error = await response.json().catch(() => ({ detail: 'API request failed' }));
+        throw new Error(error.detail || `Request failed with status ${response.status}`);
     }
 
     return response.json() as Promise<T>;

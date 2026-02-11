@@ -97,7 +97,7 @@ def get_me(
     )
 
 @router.post("/password-reset/request")
-@limiter.limit("3/minute")
+@limiter.limit("2/minute")
 def request_password_reset(
     request: Request,
     dto: PasswordResetRequestDTO,

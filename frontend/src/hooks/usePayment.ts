@@ -45,7 +45,7 @@ interface CreatorAnalytics {
     follower_growth: number;
     engagement_rate: number;
   };
-  trending_videos: Array<any>;
+  trending_videos: Array<{ video_id: string; views: number; likes: number; engagement_rate: number }>;
 }
 
 // API service
@@ -78,7 +78,7 @@ class PaymentAPI {
   }
 
   // Tip functionality
-  async sendTip(request: TipRequest): Promise<any> {
+  async sendTip(request: TipRequest): Promise<{ success: boolean; payment_intent_id?: string; client_secret?: string; transaction_id?: string }> {
     try {
       const response = await this.request('/payments/tip', {
         method: 'POST',
