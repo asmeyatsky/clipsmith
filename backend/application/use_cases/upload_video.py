@@ -58,17 +58,6 @@ class UploadVideoUseCase:
             job_timeout=3600,  # 1 hour timeout for processing
         )
 
-        # Save to repo - the ID is generated here
-        saved_video = self._video_repo.save(video)
-
-        # Enqueue the video processing task
-        self._video_queue.enqueue(
-            process_video_task,
-            saved_video.id,
-            uploaded_file_path,
-            job_timeout=3600,  # 1 hour timeout for processing
-        )
-
         # Return DTO, status will be UPLOADING, url will be None
         return VideoResponseDTO(
             id=saved_video.id,

@@ -14,16 +14,16 @@ class RecommendationEngine:
     """Advanced recommendation engine for personalized video feeds."""
     
     def __init__(self):
-        self Decay Factors = {
+        self.decay_factors = {
             'view': 1.0,
             'like': 5.0,
             'comment': 10.0,
             'share': 20.0,
             'follow': 30.0
         }
-        
-        self.TimeDecayHours = 24  # Content freshness window
-        self.MaxRecommendations = 100
+
+        self.time_decay_hours = 24  # Content freshness window
+        self.max_recommendations = 100
         
     def calculate_user_interests(self, user_interactions: List[Dict]) -> Dict[str, float]:
         """Calculate user interest scores based on interaction history."""
@@ -33,13 +33,13 @@ class RecommendationEngine:
         for interaction in user_interactions:
             # Calculate time decay
             hours_ago = (current_time - interaction['created_at']).total_seconds() / 3600
-            time_decay = math.exp(-hours_ago / self.TimeDecayHours)
+            time_decay = math.exp(-hours_ago / self.time_decay_hours)
             
             # Extract content features (hashtags, categories, etc.)
             video_tags = self._extract_video_features(interaction['video'])
             
             # Apply interaction weight and time decay
-            interaction_weight = self.DecayFactors.get(interaction['interaction_type'], 1.0)
+            interaction_weight = self.decay_factors.get(interaction['interaction_type'], 1.0)
             score = interaction_weight * time_decay
             
             for tag in video_tags:
@@ -119,7 +119,7 @@ class RecommendationEngine:
                     if i['user_id'] == similar_user_id and i['video_id'] == video.id
                 ]
                 for interaction in user_interactions_for_video:
-                    weight = self.DecayFactors.get(interaction['interaction_type'], 1.0)
+                    weight = self.decay_factors.get(interaction['interaction_type'], 1.0)
                     similar_score += weight * similarity
             score += similar_score * 0.3  # 30% weight
             
@@ -149,7 +149,7 @@ class RecommendationEngine:
         
         # Sort by score and return top recommendations
         video_scores.sort(key=lambda x: x[1], reverse=True)
-        return [video for video, _ in video_scores[:self.MaxRecommendations]]
+        return [video for video, _ in video_scores[:self.max_recommendations]]
     
     def get_trending_videos(
         self, 
@@ -172,7 +172,7 @@ class RecommendationEngine:
         
         for interaction in recent_interactions:
             video_id = interaction['video_id']
-            weight = self.DecayFactors.get(interaction['interaction_type'], 1.0)
+            weight = self.decay_factors.get(interaction['interaction_type'], 1.0)
             
             # Apply time decay (more recent = higher score)
             hours_ago = (current_time - interaction['created_at']).total_seconds() / 3600

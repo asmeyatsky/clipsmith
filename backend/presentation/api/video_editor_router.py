@@ -1,12 +1,30 @@
+import json
+import os
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from typing import List, Optional
+from fastapi.security import OAuth2PasswordBearer
+from typing import Annotated, List, Optional
 from ...application.services.video_editor_service import VideoEditorService
 from ...infrastructure.repositories.sqlite_video_editor_repo import (
     SQLiteVideoEditorRepository,
 )
 from ...infrastructure.repositories.database import get_session
-from ...presentation.middleware.security import get_current_user
+from ...infrastructure.security.jwt_adapter import JWTAdapter
 from sqlmodel import Session
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+):
+    payload = JWTAdapter.verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication credentials",
+        )
+    return {"id": payload.get("user_id"), "email": payload.get("sub")}
 
 router = APIRouter(prefix="/api/editor", tags=["video_editor"])
 
@@ -124,8 +142,6 @@ async def upload_asset(
 
     # Here you would typically upload the file to cloud storage
     # For now, we'll simulate with a URL
-    import os
-    import uuid
 
     file_content = await file.read()
     file_size = len(file_content)
@@ -181,11 +197,15 @@ async def delete_asset(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Delete an asset."""
-    # TODO: Check if asset belongs to user
-    success = await service.delete_asset(asset_id)
-    if not success:
+    asset = await service.get_asset(asset_id)
+    if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
+    project = await service.get_project(asset.project_id)
+    if not project or project.user_id != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    success = await service.delete_asset(asset_id)
     return {"success": success}
 
 
@@ -208,8 +228,6 @@ async def add_transition(
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
-
-    import json
 
     transition_params = json.loads(parameters) if parameters else None
 
@@ -347,9 +365,13 @@ async def delete_caption(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Delete a caption."""
-    # TODO: Check if caption belongs to user
-    success = await service.delete_caption(caption_id)
-    if not success:
+    caption = await service.get_caption(caption_id)
+    if not caption:
         raise HTTPException(status_code=404, detail="Caption not found")
 
+    project = await service.get_project(caption.project_id)
+    if not project or project.user_id != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    success = await service.delete_caption(caption_id)
     return {"success": success}

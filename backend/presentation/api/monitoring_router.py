@@ -1,3 +1,4 @@
+import os
 from typing import Annotated
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -119,28 +120,23 @@ def get_recent_logs(
         )
 
     try:
+        log_lines = []
         with open("logs/clipsmith.log", "r") as log_file:
-            # Read from the end
-            log_file.seek(0, 2)  # Go to end
-            file_size = log_file.tell()
+            all_file_lines = log_file.readlines()
 
-            # Find lines containing the specified level
-            lines = []
-            while len(lines) < lines and file_size > 0:
-                file_file.seek(file_size - 1024, 1)  # Go back 1KB
-                chunk = log_file.readline()
-                if chunk:
-                    if level.lower() in chunk.lower():
-                        lines.append(chunk.strip())
-                file_size = log_file.tell()
+        # Filter by level and take last N lines
+        for file_line in all_file_lines:
+            if level.lower() in file_line.lower():
+                log_lines.append(file_line.strip())
 
-            log_file.close()
+        # Return the last 'lines' entries
+        result_lines = log_lines[-lines:]
 
         return {
-            "lines": lines,
+            "lines": result_lines,
             "level": level,
-            "total_lines": len(lines),
-            "lines_returned": len(lines),
+            "total_lines": len(log_lines),
+            "lines_returned": len(result_lines),
         }
 
     except Exception as e:
@@ -210,7 +206,7 @@ def get_performance_metrics(
     # - Active user metrics
     # - System resource usage
 
-    metrics = monitoring_service.metrics_summary()
+    metrics = monitoring_service.get_metrics_summary()
 
     # Detailed endpoint analysis
     recent_requests = metrics.get("api_requests", [])

@@ -14,6 +14,21 @@ from ..infrastructure.adapters.storage_factory import get_storage_adapter
 from ..application.use_cases.generate_captions import GenerateCaptionsUseCase
 from ..domain.entities.video import VideoStatus, Video
 
+
+def _safe_parse_frame_rate(rate_str: str) -> float:
+    """Safely parse ffprobe frame rate strings like '30/1' or '29.97'."""
+    try:
+        if '/' in rate_str:
+            num, den = rate_str.split('/', 1)
+            denominator = float(den)
+            if denominator == 0:
+                return 0.0
+            return float(num) / denominator
+        return float(rate_str)
+    except (ValueError, ZeroDivisionError):
+        return 0.0
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,7 +80,7 @@ def get_video_metadata(file_path: str) -> Dict:
             "audio_codec": audio_stream.get("codec_name", "") if audio_stream else "",
             "width": int(video_stream.get("width", 0)) if video_stream else 0,
             "height": int(video_stream.get("height", 0)) if video_stream else 0,
-            "fps": eval(video_stream.get("r_frame_rate", "0/1")) if video_stream else 0,
+            "fps": _safe_parse_frame_rate(video_stream.get("r_frame_rate", "0/1")) if video_stream else 0,
             "bitrate": int(format_info.get("bit_rate", 0))
             if format_info.get("bit_rate")
             else 0,

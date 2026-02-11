@@ -231,7 +231,7 @@ class ErrorReportingService:
                 import sentry_sdk
                 self.sentry_client = sentry_sdk.init(
                     dsn=self.dsn,
-                    traces_sample_rate=1.0,
+                    traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
                     environment=os.getenv('ENVIRONMENT', 'development')
                 )
                 logger.info("Sentry error reporting initialized")

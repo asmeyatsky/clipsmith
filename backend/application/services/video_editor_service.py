@@ -90,6 +90,10 @@ class VideoEditorService:
         """Get all assets for a project."""
         return self.repository.get_project_assets(project_id, asset_type)
 
+    async def get_asset(self, asset_id: str) -> Optional[VideoEditorAsset]:
+        """Get a specific asset by ID."""
+        return self.repository.get_asset_by_id(asset_id)
+
     async def delete_asset(self, asset_id: str) -> bool:
         """Delete an asset."""
         return self.repository.delete_asset(asset_id)
@@ -168,6 +172,10 @@ class VideoEditorService:
     ) -> List[VideoEditorCaption]:
         """Get all captions for a video."""
         return self.repository.get_project_captions(project_id, video_asset_id)
+
+    async def get_caption(self, caption_id: str) -> Optional[VideoEditorCaption]:
+        """Get a specific caption by ID."""
+        return self.repository.get_caption_by_id(caption_id)
 
     async def delete_caption(self, caption_id: str) -> bool:
         """Delete a caption."""

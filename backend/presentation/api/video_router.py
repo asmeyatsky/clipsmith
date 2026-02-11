@@ -309,7 +309,8 @@ def toggle_like(
                 notification_service.send_notification(notification)
         except Exception as e:
             # Log error but don't fail the request
-            print(f"Error sending like notification: {e}")
+            import logging
+            logging.getLogger(__name__).warning("Failed to send like notification: %s", e)
 
     return {"message": "Success", "is_liked": is_liked}
 
@@ -358,8 +359,7 @@ def add_comment(
             )
             notification_service.send_notification(notification)
     except Exception as e:
-        # Log error but don't fail the request
-        print(f"Error sending comment notification: {e}")
+        logging.getLogger(__name__).warning("Failed to send comment notification: %s", e)
 
     return CommentResponseDTO(
         id=comment.id,

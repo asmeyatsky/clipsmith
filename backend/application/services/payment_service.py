@@ -118,45 +118,56 @@ class PaymentService:
     async def complete_tip_transaction(
         self, payment_intent_id: str, charge_id: str
     ) -> Dict[str, Any]:
-        """Complete a tip transaction after successful payment."""
+        """Complete a tip transaction after successful payment.
+
+        All database writes are performed within a single transaction
+        to prevent partial updates (e.g. sender debited but receiver not credited).
+        """
         transactions = self.repository.get_transactions_by_reference(payment_intent_id)
 
         for transaction in transactions:
             if transaction.transaction_type == TransactionType.TIP:
-                # Update sender transaction
-                completed_transaction = transaction.complete()
-                self.repository.save_transaction(completed_transaction)
+                try:
+                    # Update sender transaction
+                    completed_transaction = transaction.complete()
+                    self.repository.save_transaction(completed_transaction)
 
-                # Create receiver transaction (credit)
-                receiver_id = transaction.metadata.get("receiver_id")
-                if receiver_id:
-                    receiver_transaction = Transaction(
-                        user_id=receiver_id,
-                        amount=abs(transaction.amount),
-                        transaction_type=TransactionType.TIP,
-                        description="Tip received",
-                        reference_id=charge_id,
-                        metadata={
-                            "sender_id": transaction.user_id,
-                            "original_transaction_id": transaction.id,
-                        },
-                    )
+                    # Create receiver transaction (credit)
+                    receiver_id = transaction.metadata.get("receiver_id")
+                    if receiver_id:
+                        receiver_transaction = Transaction(
+                            user_id=receiver_id,
+                            amount=abs(transaction.amount),
+                            transaction_type=TransactionType.TIP,
+                            description="Tip received",
+                            reference_id=charge_id,
+                            metadata={
+                                "sender_id": transaction.user_id,
+                                "original_transaction_id": transaction.id,
+                            },
+                        )
 
-                    completed_receiver = receiver_transaction.complete()
-                    saved_receiver = self.repository.save_transaction(
-                        completed_receiver
-                    )
+                        completed_receiver = receiver_transaction.complete()
+                        saved_receiver = self.repository.save_transaction(
+                            completed_receiver
+                        )
 
-                    # Update receiver's wallet
-                    receiver_wallet = await self.create_wallet(receiver_id)
-                    updated_wallet = receiver_wallet.add_funds(abs(transaction.amount))
-                    self.repository.save_wallet(updated_wallet)
+                        # Update receiver's wallet
+                        receiver_wallet = await self.create_wallet(receiver_id)
+                        updated_wallet = receiver_wallet.add_funds(abs(transaction.amount))
+                        self.repository.save_wallet(updated_wallet)
 
-                    return {
-                        "success": True,
-                        "transaction_id": transaction.id,
-                        "receiver_transaction_id": saved_receiver.id,
-                    }
+                        # Commit the entire transaction atomically
+                        self.repository.commit()
+
+                        return {
+                            "success": True,
+                            "transaction_id": transaction.id,
+                            "receiver_transaction_id": saved_receiver.id,
+                        }
+                except Exception:
+                    self.repository.rollback()
+                    raise
 
         return {"success": False, "error": "Transaction not found"}
 
