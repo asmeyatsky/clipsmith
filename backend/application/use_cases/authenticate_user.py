@@ -22,7 +22,7 @@ class AuthenticateUserUseCase:
         # Create Token
         access_token = JWTAdapter.create_access_token(
             data={"sub": user.email, "user_id": user.id},
-            expires_delta=timedelta(minutes=60)
+            expires_delta=timedelta(minutes=30)
         )
 
         return LoginResponseDTO(

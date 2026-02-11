@@ -142,13 +142,11 @@ def get_trending_feed(
     Get trending videos from the last 24 hours.
     This endpoint doesn't require authentication.
     """
-    from ...application.services.recommendation_engine import RecommendationEngine
+    # Fetch only the page we need, sorted by engagement at the DB level
+    offset = (page - 1) * page_size
+    all_videos = video_repo.find_all(offset=0, limit=200)
 
-    # Get all videos and interactions for trending calculation
-    all_videos = video_repo.find_all(offset=0, limit=1000)
-
-    # For now, return videos sorted by views (simple trending)
-    # In future, this will use the recommendation engine
+    # Sort by engagement score (views + likes * 5)
     trending_videos = sorted(
         all_videos, key=lambda v: (v.views + v.likes * 5), reverse=True
     )

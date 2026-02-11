@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from typing import List, Optional
 from ...application.services.payment_service import PaymentService
@@ -44,6 +45,18 @@ async def get_wallet_summary(
     return {"success": True, "summary": summary}
 
 
+def _validate_redirect_url(url: str) -> str:
+    """Validate that a redirect URL is safe (same-origin or allowed domain)."""
+    from urllib.parse import urlparse
+    allowed_hosts = os.getenv("ALLOWED_REDIRECT_HOSTS", "localhost,clipsmith.com,www.clipsmith.com").split(",")
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Invalid URL scheme")
+    if parsed.hostname and parsed.hostname not in allowed_hosts:
+        raise HTTPException(status_code=400, detail="Redirect URL not allowed")
+    return url
+
+
 @router.post("/wallet/setup-connect")
 async def setup_stripe_connect(
     return_url: str = Form(...),
@@ -52,6 +65,9 @@ async def setup_stripe_connect(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Setup Stripe Connect for creator payouts."""
+    return_url = _validate_redirect_url(return_url)
+    refresh_url = _validate_redirect_url(refresh_url)
+
     result = await service.setup_stripe_connect(
         user_id=current_user["id"],
         email=current_user.get("email", f"user_{current_user['id']}@example.com"),

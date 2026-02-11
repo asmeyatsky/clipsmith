@@ -46,7 +46,7 @@ async def create_project(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Create a new video project."""
-    project = await service.create_project(
+    project = service.create_project(
         user_id=current_user["id"], title=title, description=description
     )
     return {"success": True, "project": project}
@@ -63,7 +63,7 @@ async def get_user_projects(
     from ...domain.entities.video_editor import VideoProjectStatus
 
     project_status = VideoProjectStatus(status) if status else None
-    projects = await service.get_user_projects(
+    projects = service.get_user_projects(
         user_id=current_user["id"], limit=limit, status=project_status
     )
     return {"success": True, "projects": projects}
@@ -76,7 +76,7 @@ async def get_project(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Get a specific project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -94,14 +94,14 @@ async def update_project_title(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Update project title."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    updated_project = await service.update_project_title(project_id, title)
+    updated_project = service.update_project_title(project_id, title)
     return {"success": True, "project": updated_project}
 
 
@@ -112,14 +112,14 @@ async def delete_project(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Delete a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    success = await service.delete_project(project_id)
+    success = service.delete_project(project_id)
     return {"success": success}
 
 
@@ -133,7 +133,7 @@ async def upload_asset(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Upload an asset to a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -159,7 +159,7 @@ async def upload_asset(
 
     asset_url = f"/uploads/editor/{unique_filename}"
 
-    asset = await service.upload_asset(
+    asset = service.upload_asset(
         project_id=project_id,
         asset_type=asset_type,
         filename=file.filename,
@@ -179,14 +179,14 @@ async def get_project_assets(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Get assets for a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    assets = await service.get_project_assets(project_id, asset_type)
+    assets = service.get_project_assets(project_id, asset_type)
     return {"success": True, "assets": assets}
 
 
@@ -197,15 +197,15 @@ async def delete_asset(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Delete an asset."""
-    asset = await service.get_asset(asset_id)
+    asset = service.get_asset(asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    project = await service.get_project(asset.project_id)
+    project = service.get_project(asset.project_id)
     if not project or project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    success = await service.delete_asset(asset_id)
+    success = service.delete_asset(asset_id)
     return {"success": success}
 
 
@@ -222,7 +222,7 @@ async def add_transition(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Add a transition to a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -231,7 +231,7 @@ async def add_transition(
 
     transition_params = json.loads(parameters) if parameters else None
 
-    transition = await service.add_transition(
+    transition = service.add_transition(
         project_id=project_id,
         transition_type=transition_type,
         start_time=start_time,
@@ -250,14 +250,14 @@ async def get_project_transitions(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Get transitions for a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    transitions = await service.get_project_transitions(project_id)
+    transitions = service.get_project_transitions(project_id)
     return {"success": True, "transitions": transitions}
 
 
@@ -273,14 +273,14 @@ async def add_track(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Add a track to a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    track = await service.add_track(
+    track = service.add_track(
         project_id=project_id,
         asset_id=asset_id,
         track_type=track_type,
@@ -298,14 +298,14 @@ async def get_project_tracks(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Get tracks for a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    tracks = await service.get_project_tracks(project_id)
+    tracks = service.get_project_tracks(project_id)
     return {"success": True, "tracks": tracks}
 
 
@@ -321,14 +321,14 @@ async def add_caption(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Add a caption to a video."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    caption = await service.add_caption(
+    caption = service.add_caption(
         project_id=project_id,
         video_asset_id=video_asset_id,
         text=text,
@@ -347,14 +347,14 @@ async def get_project_captions(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Get captions for a video in a project."""
-    project = await service.get_project(project_id)
+    project = service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
     if project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    captions = await service.get_project_captions(project_id, video_asset_id)
+    captions = service.get_project_captions(project_id, video_asset_id)
     return {"success": True, "captions": captions}
 
 
@@ -365,13 +365,13 @@ async def delete_caption(
     service: VideoEditorService = Depends(get_video_editor_service),
 ):
     """Delete a caption."""
-    caption = await service.get_caption(caption_id)
+    caption = service.get_caption(caption_id)
     if not caption:
         raise HTTPException(status_code=404, detail="Caption not found")
 
-    project = await service.get_project(caption.project_id)
+    project = service.get_project(caption.project_id)
     if not project or project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    success = await service.delete_caption(caption_id)
+    success = service.delete_caption(caption_id)
     return {"success": success}

@@ -55,11 +55,15 @@ class SQLiteVideoRepository(VideoRepositoryPort):
         return False
 
     def increment_views(self, video_id: str) -> Optional[Video]:
+        from sqlalchemy import text
+        # Use atomic UPDATE to avoid read-modify-write race condition
+        self.session.execute(
+            text("UPDATE videodb SET views = COALESCE(views, 0) + 1 WHERE id = :vid"),
+            {"vid": video_id},
+        )
+        self.session.commit()
         video_db = self.session.get(VideoDB, video_id)
         if video_db:
-            video_db.views = (video_db.views or 0) + 1
-            self.session.add(video_db)
-            self.session.commit()
             self.session.refresh(video_db)
             return Video(**video_db.model_dump())
         return None

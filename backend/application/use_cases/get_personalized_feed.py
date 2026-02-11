@@ -46,49 +46,35 @@ class GetPersonalizedFeedUseCase:
         # Get user's following list
         user_following = self._get_user_following(user_id)
 
-        # Get user interaction history
-        user_interactions = self.interaction_repo.get_user_interactions(user_id)
-
-        # Get all ready videos for recommendations
-        all_videos = self.video_repo.find_all(offset=0, limit=1000)  # Get larger pool
-        all_interactions = self.interaction_repo.get_all_interactions(limit=10000)
-
-        if feed_type == "foryou":
-            feed_videos = self.recommendation_engine.get_for_you_feed(
-                user_id=user_id,
-                user_interactions=user_interactions,
-                all_videos=all_videos,
-                all_interactions=all_interactions,
-                user_following=user_following,
-                include_trending=True,
-            )
-
-        elif feed_type == "following":
-            # Get videos from creators user follows
+        if feed_type == "following":
+            # Optimized path: only fetch videos from followed creators
             feed_videos = self.video_repo.get_videos_from_creators(
                 creator_ids=list(user_following),
                 offset=(page - 1) * page_size,
                 limit=page_size,
             )
-
-        elif feed_type == "trending":
-            # Get trending videos
-            trending_videos = self.recommendation_engine.get_trending_videos(
-                all_videos=all_videos,
-                all_interactions=all_interactions,
-                hours=24,  # Last 24 hours
-            )
-            feed_videos = trending_videos
-
         else:
-            # Default to foryou
-            feed_videos = self.recommendation_engine.get_for_you_feed(
-                user_id=user_id,
-                user_interactions=user_interactions,
-                all_videos=all_videos,
-                all_interactions=all_interactions,
-                user_following=user_following,
-            )
+            # Load shared data once for recommendation-based feeds
+            user_interactions = self.interaction_repo.get_user_interactions(user_id)
+            all_videos = self.video_repo.find_all(offset=0, limit=500)
+            all_interactions = self.interaction_repo.get_all_interactions(limit=5000)
+
+            if feed_type == "trending":
+                feed_videos = self.recommendation_engine.get_trending_videos(
+                    all_videos=all_videos,
+                    all_interactions=all_interactions,
+                    hours=24,
+                )
+            else:
+                # "foryou" or unknown feed type
+                feed_videos = self.recommendation_engine.get_for_you_feed(
+                    user_id=user_id,
+                    user_interactions=user_interactions,
+                    all_videos=all_videos,
+                    all_interactions=all_interactions,
+                    user_following=user_following,
+                    include_trending=(feed_type == "foryou"),
+                )
 
         # Apply pagination
         start_idx = (page - 1) * page_size
@@ -104,13 +90,7 @@ class GetPersonalizedFeedUseCase:
             return self.video_repo.count_videos_from_creators(list(user_following))
 
         elif feed_type == "trending":
-            # For trending, we return a fixed number
-            all_videos = self.video_repo.find_all(offset=0, limit=1000)
-            all_interactions = self.interaction_repo.get_all_interactions(limit=10000)
-            trending_videos = self.recommendation_engine.get_trending_videos(
-                all_videos=all_videos, all_interactions=all_interactions, hours=24
-            )
-            return len(trending_videos)
+            return 50  # Trending feed is capped at 50
 
         # For "foryou" feed, we return a reasonable limit
         return 50  # We limit to 50 recommendations per user

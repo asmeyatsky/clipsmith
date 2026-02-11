@@ -155,14 +155,23 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
         }
     };
 
-    const animate = () => {
+    const animate = useCallback(() => {
         if (project && playhead < project.duration) {
             setPlayhead(prev => prev + 0.016); // ~60fps
             animationRef.current = requestAnimationFrame(animate);
         } else {
             setIsPlaying(false);
         }
-    };
+    }, [project, playhead]);
+
+    // Cleanup animation frame on unmount
+    useEffect(() => {
+        return () => {
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+            }
+        };
+    }, []);
 
     const handleAddToTimeline = () => {
         if (!selectedAsset || !project) return;

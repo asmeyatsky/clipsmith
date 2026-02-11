@@ -2,7 +2,8 @@
 export const paymentAPI = {
   // Override API methods for development
   sendTip: async (request: TipRequest) => {
-    console.log('🎁 Tip:', request);
+    // Tip request logged in development only
+    if (process.env.NODE_ENV === 'development') console.log('Tip:', request);
     // Mock success response
     return {
       success: true,
@@ -126,7 +127,7 @@ export const analyticsAPI = {
   ],
   
   trackEvent: async (videoId: string, eventType: string, value?: number) => {
-    console.log('📊 Analytics:', { videoId, eventType, value });
+    if (process.env.NODE_ENV === 'development') console.log('Analytics:', { videoId, eventType, value });
   },
 };
 
@@ -141,12 +142,12 @@ export const useAuth = () => {
   });
 
   const login = async (email: string, password: string) => {
-    console.log('🔐 Login attempt:', { email });
+    if (process.env.NODE_ENV === 'development') console.log('Login attempt');
     // Mock successful login for demo user
     if (email === 'creator@clipsmith.com' && password === 'demo') {
       user[1]({ ...user[1], created_at: '2024-01-10T00:00:00Z' });
-      localStorage.setItem('token', 'mock_token_123');
-      return { user: user[1], token: 'mock_token_123' };
+      localStorage.setItem('token', 'mock_dev_token');
+      return { user: user[1], token: 'mock_dev_token' };
     }
     
     return null;
