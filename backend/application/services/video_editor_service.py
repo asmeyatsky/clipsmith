@@ -1,5 +1,5 @@
 from typing import List, Optional
-from ..domain.entities.video_editor import (
+from ...domain.entities.video_editor import (
     VideoProject,
     VideoEditorAsset,
     VideoEditorTransition,
@@ -7,7 +7,7 @@ from ..domain.entities.video_editor import (
     VideoEditorCaption,
     VideoProjectStatus,
 )
-from ..domain.ports.video_editor_repository_port import VideoEditorRepositoryPort
+from ...domain.ports.video_editor_repository_port import VideoEditorRepositoryPort
 
 
 class VideoEditorService:

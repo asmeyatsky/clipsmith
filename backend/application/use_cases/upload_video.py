@@ -1,7 +1,7 @@
 from ...domain.ports.repository_ports import VideoRepositoryPort
 from ...domain.ports.storage_port import StoragePort
 from ...domain.entities.video import Video, VideoStatus
-from ...dtos.video_dto import VideoCreateDTO, VideoResponseDTO
+from ..dtos.video_dto import VideoCreateDTO, VideoResponseDTO
 from typing import BinaryIO
 import uuid
 

@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 import sys
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -82,8 +83,8 @@ class ClipsmithLogger:
             **kwargs
         )
     
-    def log_api_request(self, method: str, endpoint: str, user_id: Optional[str] = None, 
-                    status_code: int, response_time: float, **kwargs):
+    def log_api_request(self, method: str, endpoint: str,
+                    status_code: int, response_time: float, user_id: Optional[str] = None, **kwargs):
         """Log API requests for monitoring and analytics."""
         self.info(
             f"API Request: {method} {endpoint} -> {status_code} ({response_time:.2f}s)",

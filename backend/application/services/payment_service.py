@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from ..domain.entities.payment import (
+from ...domain.entities.payment import (
     Transaction,
     CreatorWallet,
     Payout,
@@ -10,7 +10,7 @@ from ..domain.entities.payment import (
     PayoutStatus,
     WalletStatus,
 )
-from ..domain.ports.payment_repository_port import (
+from ...domain.ports.payment_repository_port import (
     PaymentRepositoryPort,
     StripeServicePort,
 )

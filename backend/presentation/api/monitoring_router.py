@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from ..application.services.monitoring_service import monitoring_service, logger
-from ..infrastructure.security.jwt_adapter import JWTAdapter
+from ...application.services.monitoring_service import monitoring_service, logger
+from ...infrastructure.security.jwt_adapter import JWTAdapter
 
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

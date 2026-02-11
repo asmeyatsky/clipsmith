@@ -162,7 +162,7 @@ class VideoProjectDB(SQLModel, table=True):
     updated_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     settings: Optional[str] = Field(default=None)  # JSON string
-    metadata: Optional[str] = Field(default=None)  # JSON string
+    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})  # JSON string
     permission: str = Field(default="private", index=True)
 
 class VideoEditorAssetDB(SQLModel, table=True):
@@ -172,7 +172,7 @@ class VideoEditorAssetDB(SQLModel, table=True):
     name: str
     original_url: Optional[str] = None
     storage_url: Optional[str] = None
-    metadata: Optional[str] = Field(default=None)
+    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})
     duration: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -180,7 +180,7 @@ class VideoEditorTransitionDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     project_id: str = Field(index=True)
     asset_id: str = Field(index=True)
-    type: str  Field(index=True)
+    type: str = Field(index=True)
     start_time: float = Field(default=0.0)
     end_time: float = Field(default=0.0)
     duration: float = Field(default=0.0)
@@ -194,7 +194,7 @@ class VideoEditorTrackDB(SQLModel, table=True):
     type: str = Field(index=True)
     start_time: float = Field(default=0.0)
     end_time: float = Field(default=0.0)
-    content: Optional[Dict[str, Any]] = None
+    content: Optional[str] = Field(default=None)  # JSON string
 
 class VideoEditorCaptionDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -203,72 +203,12 @@ class VideoEditorCaptionDB(SQLModel, table=True):
     start_time: float = Field(default=0.0)
     end_time: float = Field(default=0.0)
     text: str = ""
-    style: Optional[Dict[str, Any]] = None
+    style: Optional[str] = Field(default=None)  # JSON string
     is_auto_generated: bool = Field(default=False)
     language: str = Field(default="en")
     created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
 
 
-class EmailVerificationDB(SQLModel, table=True):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(index=True)
-    email: str = Field(index=True)
-    token: str = Field(unique=True, index=True)
-    status: str = Field(default="pending", index=True)
-    expires_at: datetime = Field(index=True)
-    created_at: datetime = Field(default_factory=datetime.now)
-    verified_at: datetime | None = Field(default=None)
-
-
-class TwoFactorSecretDB(SQLModel, table=True):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    user_id: str = Field(index=True)
-    method: str = Field(index=True)
-    secret: str = Field(unique=True)  # Encrypted secret
-    backup_codes: str | None = Field(default=None)
-    is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.now)
-    last_used_at: datetime | None = Field(default=None)
-
-
-from typing import List, Optional
-from sqlmodel import Session, select, func, and_, desc
-from ...domain.entities.video import Video
-from ...domain.ports.repository_ports import VideoRepositoryPort
-from .database import engine
-from .models import VideoDB, VideoProjectDB, VideoEditorAssetDB, VideoEditorTransitionDB, VideoEditorTrackDB, VideoEditorCaptionDB
-
-class SQLiteVideoEditorRepository(VideoRepositoryPort):
-    def __init__(self, session: Session):
-        self.session = session
-
-    def save_video_project(self, project: VideoProject) -> VideoProject:
-        project_db = VideoProjectDB.model_validate(project)
-        project_db = self.session.merge(project_db)
-        self.session.commit()
-        self.session.refresh(project_db)
-        return VideoProject(**project_db.model_dump())
-
-    def get_user_projects(self, user_id: str, limit: int = 20, status: Optional[str] = None) -> List[VideoProject]:
-        query = select(VideoProjectDB).where(VideoProjectDB.user_id == user_id)
-        
-        if status:
-            status_enum = VideoProjectStatus(status)
-            query = query.where(VideoProjectDB.status == status_enum)
-        
-        query = query.order_by(VideoProjectDB.updated_at.desc()).limit(limit)
-        
-        results = self.session.exec(query).all()
-        return [VideoProject(**project.model_dump()) for project in results]
-
-    def delete_video_project(self, project_id: str) -> bool:
-        project_db = self.session.get(VideoProjectDB, project_id)
-        if not project_db:
-            return False
-        
-        self.session.delete(project_db)
-        self.session.commit(    )
-        return True
 
 
 # Payment and Wallet Models
@@ -283,7 +223,7 @@ class TransactionDB(SQLModel, table=True):
     status: str = Field(default="pending", index=True)  # TransactionStatus enum value
     description: Optional[str] = None
     reference_id: Optional[str] = Field(index=True)  # External reference
-    metadata: Optional[str] = Field(default=None)  # JSON string
+    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})  # JSON string
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -330,7 +270,7 @@ class PayoutDB(SQLModel, table=True):
     fee_amount: float = Field(default=0.0)
     net_amount: float
     description: Optional[str] = None
-    metadata: Optional[str] = Field(default=None)  # JSON string
+    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})  # JSON string
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

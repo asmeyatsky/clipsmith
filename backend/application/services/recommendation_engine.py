@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import math
 
-from ..domain.entities.video import Video
-from ..domain.entities.user import User
-from ..domain.entities.interaction import InteractionType
+from ...domain.entities.video import Video
+from ...domain.entities.user import User
+from ...domain.entities.interaction import InteractionType
 
 logger = logging.getLogger(__name__)
 

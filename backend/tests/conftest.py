@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only-not-production")
+
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 from fastapi.testclient import TestClient

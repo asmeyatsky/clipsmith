@@ -5,7 +5,7 @@ from ...application.services.payment_service import PaymentService
 from ...infrastructure.repositories.sqlite_payment_repo import SQLitePaymentRepository
 from ...infrastructure.services.stripe_service import StripeService
 from ...infrastructure.repositories.database import get_session
-from ...presentation.middleware.security import get_current_user
+from .auth_router import get_current_user
 from ...domain.entities.payment import TransactionType, Transaction
 from sqlmodel import Session
 from datetime import datetime

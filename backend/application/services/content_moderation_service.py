@@ -2,14 +2,14 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from ..domain.entities.content_moderation import (
+from ...domain.entities.content_moderation import (
     ContentModeration,
     ModerationStatus,
     ModerationType,
     ModerationSeverity,
     ModerationReason,
 )
-from ..domain.ports.repository_ports import ContentModerationRepositoryPort
+from ...domain.ports.repository_ports import ContentModerationRepositoryPort
 
 logger = logging.getLogger(__name__)
 

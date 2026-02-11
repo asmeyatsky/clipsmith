@@ -60,6 +60,33 @@ class VideoRepositoryPort(ABC):
         pass
 
 
+class InteractionRepositoryPort(ABC):
+    @abstractmethod
+    def toggle_like(self, user_id: str, video_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    def has_user_liked(self, user_id: str, video_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    def add_comment(self, user_id: str, username: str, video_id: str, content: str):
+        pass
+
+    @abstractmethod
+    def list_comments(self, video_id: str) -> List:
+        pass
+
+    def get_user_interactions(self, user_id: str) -> List:
+        return []
+
+    def get_all_interactions(self, limit: int = 5000) -> List:
+        return []
+
+    def get_user_following(self, user_id: str) -> List:
+        return []
+
+
 class UserRepositoryPort(ABC):
     @abstractmethod
     def save(self, user: User) -> User:

@@ -2,15 +2,15 @@ import time
 import logging
 from typing import Callable
 from fastapi import Request, Response
-from starlette.middleware.base import HTTPConnectionMiddleware
-from ..application.services.monitoring_service import (
+from starlette.middleware.base import BaseHTTPMiddleware
+from ...application.services.monitoring_service import (
     monitoring_service,
     logger,
     error_reporting,
 )
 
 
-class MonitoringMiddleware(HTTPConnectionMiddleware):
+class MonitoringMiddleware(BaseHTTPMiddleware):
     """Middleware for API monitoring and request logging."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

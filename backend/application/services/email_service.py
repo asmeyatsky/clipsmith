@@ -7,8 +7,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 
-from ..domain.entities.auth_security import EmailVerification
-from ..domain.ports.repository_ports import UserRepositoryPort
+from ...domain.entities.auth_security import EmailVerification
+from ...domain.ports.repository_ports import UserRepositoryPort
 
 logger = logging.getLogger(__name__)
 

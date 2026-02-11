@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from ..domain.entities.analytics import (
+from ...domain.entities.analytics import (
     VideoAnalytics,
     CreatorAnalytics,
     TimeSeriesData,
@@ -10,7 +10,7 @@ from ..domain.entities.analytics import (
     TimePeriod,
     ContentType,
 )
-from ..domain.ports.analytics_repository_port import AnalyticsRepositoryPort
+from ...domain.ports.analytics_repository_port import AnalyticsRepositoryPort
 
 
 class AnalyticsService:

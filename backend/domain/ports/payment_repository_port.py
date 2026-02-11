@@ -160,8 +160,8 @@ class StripeServicePort(ABC):
     
     # Payouts
     @abstractmethod
-    async def create_payout(self, amount: float, currency: str = "USD", 
-                          destination: str, metadata: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    async def create_payout(self, amount: float, destination: str,
+                          currency: str = "USD", metadata: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """Create a payout to a bank account."""
         pass
     

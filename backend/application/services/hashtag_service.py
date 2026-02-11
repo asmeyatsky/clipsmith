@@ -1,7 +1,7 @@
 import re
 from typing import List, Set
-from ..domain.entities.hashtag import Hashtag
-from ..domain.ports.repository_ports import HashtagRepositoryPort
+from ...domain.entities.hashtag import Hashtag
+from ...domain.ports.repository_ports import HashtagRepositoryPort
 
 
 class HashtagService:

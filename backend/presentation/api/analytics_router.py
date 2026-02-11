@@ -5,7 +5,7 @@ from ...infrastructure.repositories.sqlite_analytics_repo import (
     SQLiteAnalyticsRepository,
 )
 from ...infrastructure.repositories.database import get_session
-from ...presentation.middleware.security import get_current_user
+from .auth_router import get_current_user
 from ...domain.entities.analytics import MetricType, TimePeriod, ContentType
 from sqlmodel import Session
 from datetime import datetime, timedelta

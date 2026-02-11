@@ -1,7 +1,31 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import Optional, Dict, Any, List, TypeVar
 from uuid import UUID
+from ..base import Entity
+
+
+class VideoStatus(str, Enum):
+    UPLOADING = "UPLOADING"
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+
+@dataclass(frozen=True, kw_only=True)
+class Video(Entity):
+    title: str = ""
+    description: str = ""
+    creator_id: str = ""
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    status: str = "PENDING"
+    views: int = 0
+    likes: int = 0
+    duration: float = 0.0
+
 
 @dataclass(frozen=True, kw_only=True)
 class VideoMetadata:
@@ -14,11 +38,12 @@ class VideoMetadata:
     moderation_status: Optional[str] = field(default=None)
     processing_duration: float = field(default=0.0)
     file_size: int = field(default=0)
-    resolution_info: Dict[str, Any] = field(default=dict)
-    ai_confidence_thresholds: Dict[str, float] = field(default_factory=dict)
-        auto_approve_threshold: field(default=0.9)
-        auto_reject_threshold: field(default=0.7)
-        flag_for_review: field(default=0.6)
+    resolution_info: Dict[str, Any] = field(default_factory=dict)
+    ai_confidence_thresholds: Dict[str, float] = field(default_factory=lambda: {
+        "auto_approve_threshold": 0.9,
+        "auto_reject_threshold": 0.7,
+        "flag_for_review": 0.6,
+    })
     
     def __init__(
         self,
