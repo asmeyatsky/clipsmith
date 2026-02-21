@@ -3,12 +3,13 @@ import { useRouter } from 'next/navigation';
 import { interactionService } from '@/lib/api/interactions';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { CommentsSection } from './comments-section';
-import { Play, Heart, MessageCircle, Share2, MoreHorizontal, Eye, Loader2, X, Pencil, DollarSign } from 'lucide-react'; // Added DollarSign
+import { Play, Heart, MessageCircle, Share2, MoreHorizontal, Eye, Loader2, X, Pencil, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { VideoResponseDTO } from '@/lib/types'; // Import the DTO
-import { TipModal } from '@/components/modals/tip-modal'; // Import TipModal
+import { VideoResponseDTO } from '@/lib/types';
+import { TipModal } from '@/components/modals/tip-modal';
+import { sanitizeForReact } from '@/lib/utils/sanitize';
 
 
 interface VideoProps extends VideoResponseDTO {} // Use the DTO for props, or just use VideoResponseDTO directly
@@ -119,12 +120,14 @@ import { useAnalytics } from '../hooks/useAnalytics';
 
                             <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 flex items-end justify-between">
                                 <div className="space-y-1 text-white drop-shadow-lg max-w-[60%] sm:max-w-[70%]">
-                                    <h3 className="font-bold text-sm sm:text-lg leading-tight line-clamp-2">
-                                        {video.title}
-                                    </h3>
-                                    <p className="text-xs text-white/80 line-clamp-1">
-                                        {video.description}
-                                    </p>
+                                    <h3 
+                                        className="font-bold text-sm sm:text-lg leading-tight line-clamp-2"
+                                        dangerouslySetInnerHTML={{ __html: sanitizeForReact(video.title) }}
+                                    />
+                                    <p 
+                                        className="text-xs text-white/80 line-clamp-1"
+                                        dangerouslySetInnerHTML={{ __html: sanitizeForReact(video.description) }}
+                                    />
                                 </div>
                                 <div className="flex flex-col items-center gap-2 sm:gap-4 mb-2">
                                     <motion.button

@@ -48,7 +48,10 @@ async def get_wallet_summary(
 def _validate_redirect_url(url: str) -> str:
     """Validate that a redirect URL is safe (same-origin or allowed domain)."""
     from urllib.parse import urlparse
-    allowed_hosts = os.getenv("ALLOWED_REDIRECT_HOSTS", "localhost,clipsmith.com,www.clipsmith.com").split(",")
+
+    allowed_hosts = os.getenv(
+        "ALLOWED_REDIRECT_HOSTS", "localhost,clipsmith.com,www.clipsmith.com"
+    ).split(",")
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise HTTPException(status_code=400, detail="Invalid URL scheme")
@@ -376,3 +379,281 @@ async def _handle_account_update(event: dict, service: PaymentService):
     # Update account status if needed
     # Could update wallet status based on account capabilities
     pass
+
+
+# ==================== Premium Content Endpoints ====================
+
+
+@router.post("/premium/content")
+async def create_premium_content(
+    video_id: str = Form(...),
+    price: float = Form(...),
+    description: str = Form(None),
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Create premium content for a video."""
+    from ..infrastructure.repositories.models import PremiumContentDB
+
+    existing = session.exec(
+        select(PremiumContentDB).where(
+            PremiumContentDB.video_id == video_id,
+            PremiumContentDB.creator_id == current_user["id"],
+        )
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=400, detail="Premium content already exists for this video"
+        )
+
+    premium = PremiumContentDB(
+        creator_id=current_user["id"],
+        video_id=video_id,
+        price=price,
+        description=description,
+    )
+    session.add(premium)
+    session.commit()
+
+    return {"success": True, "premium_content_id": premium.id}
+
+
+@router.get("/premium/{video_id}")
+async def get_premium_content(
+    video_id: str,
+    session: Session = Depends(get_session),
+):
+    """Get premium content info for a video."""
+    from ..infrastructure.repositories.models import PremiumContentDB
+
+    premium = session.exec(
+        select(PremiumContentDB).where(
+            PremiumContentDB.video_id == video_id, PremiumContentDB.is_active == True
+        )
+    ).first()
+
+    if not premium:
+        return {"is_premium": False, "price": None}
+
+    return {
+        "is_premium": True,
+        "price": premium.price,
+        "description": premium.description,
+        "purchase_count": premium.purchase_count,
+    }
+
+
+@router.post("/premium/{premium_content_id}/purchase")
+async def purchase_premium_content(
+    premium_content_id: str,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Purchase premium content."""
+    from ..infrastructure.repositories.models import PremiumContentDB, PremiumPurchaseDB
+
+    premium = session.get(PremiumContentDB, premium_content_id)
+    if not premium or not premium.is_active:
+        raise HTTPException(status_code=404, detail="Premium content not found")
+
+    existing_purchase = session.exec(
+        select(PremiumPurchaseDB).where(
+            PremiumPurchaseDB.user_id == current_user["id"],
+            PremiumContentDB.premium_content_id == premium_content_id,
+            PremiumPurchaseDB.status == "completed",
+        )
+    ).first()
+
+    if existing_purchase:
+        raise HTTPException(status_code=400, detail="Already purchased")
+
+    purchase = PremiumPurchaseDB(
+        user_id=current_user["id"],
+        premium_content_id=premium_content_id,
+        amount=premium.price,
+    )
+    session.add(purchase)
+    session.commit()
+
+    return {
+        "success": True,
+        "purchase_id": purchase.id,
+        "amount": premium.price,
+        "message": "Purchase initiated",
+    }
+
+
+@router.get("/premium/purchases")
+async def get_purchased_content(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Get user's purchased premium content."""
+    from ..infrastructure.repositories.models import PremiumContentDB, PremiumPurchaseDB
+
+    purchases = session.exec(
+        select(PremiumPurchaseDB).where(
+            PremiumPurchaseDB.user_id == current_user["id"],
+            PremiumPurchaseDB.status == "completed",
+        )
+    ).all()
+
+    result = []
+    for p in purchases:
+        premium = session.get(PremiumContentDB, p.premium_content_id)
+        if premium:
+            result.append(
+                {
+                    "purchase_id": p.id,
+                    "video_id": premium.video_id,
+                    "amount": p.amount,
+                    "purchased_at": p.created_at.isoformat() if p.created_at else None,
+                }
+            )
+
+    return {"purchases": result}
+
+
+# ==================== Brand Collaboration Endpoints ====================
+
+
+@router.post("/brand/profile")
+async def create_brand_profile(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Create a brand profile."""
+    from ..infrastructure.repositories.models import BrandProfileDB
+
+    body = await request.json()
+
+    existing = session.exec(
+        select(BrandProfileDB).where(BrandProfileDB.user_id == current_user["id"])
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Brand profile already exists")
+
+    brand = BrandProfileDB(
+        user_id=current_user["id"],
+        company_name=body.get("company_name"),
+        industry=body.get("industry"),
+        website=body.get("website"),
+        description=body.get("description"),
+        logo_url=body.get("logo_url"),
+    )
+    session.add(brand)
+    session.commit()
+
+    return {"success": True, "brand_profile_id": brand.id}
+
+
+@router.get("/brand/profile")
+async def get_brand_profile(
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Get brand profile."""
+    from ..infrastructure.repositories.models import BrandProfileDB
+
+    brand = session.exec(
+        select(BrandProfileDB).where(BrandProfileDB.user_id == current_user["id"])
+    ).first()
+
+    if not brand:
+        return {"has_profile": False}
+
+    return {
+        "has_profile": True,
+        "company_name": brand.company_name,
+        "industry": brand.industry,
+        "website": brand.website,
+        "description": brand.description,
+        "logo_url": brand.logo_url,
+        "is_verified": brand.is_verified,
+    }
+
+
+@router.post("/brand/campaigns")
+async def create_campaign(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Create a brand campaign."""
+    from ..infrastructure.repositories.models import BrandCampaignDB
+
+    body = await request.json()
+
+    campaign = BrandCampaignDB(
+        brand_id=current_user["id"],
+        creator_id=body.get("creator_id"),
+        title=body.get("title"),
+        description=body.get("description"),
+        budget=body.get("budget"),
+        requirements=json.dumps(body.get("requirements", [])),
+        deliverables=json.dumps(body.get("deliverables", [])),
+    )
+    session.add(campaign)
+    session.commit()
+
+    return {"success": True, "campaign_id": campaign.id}
+
+
+@router.get("/brand/campaigns")
+async def list_campaigns(
+    status: str = None,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """List campaigns."""
+    from ..infrastructure.repositories.models import BrandCampaignDB
+
+    query = select(BrandCampaignDB).where(
+        (BrandCampaignDB.brand_id == current_user["id"])
+        | (BrandCampaignDB.creator_id == current_user["id"])
+    )
+
+    if status:
+        query = query.where(BrandCampaignDB.status == status)
+
+    campaigns = session.exec(query).all()
+
+    return {
+        "campaigns": [
+            {
+                "id": c.id,
+                "title": c.title,
+                "budget": c.budget,
+                "status": c.status,
+                "payment_status": c.payment_status,
+            }
+            for c in campaigns
+        ]
+    }
+
+
+@router.post("/brand/campaigns/{campaign_id}/respond")
+async def respond_to_campaign(
+    campaign_id: str,
+    accept: bool,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Accept or reject a campaign."""
+    from ..infrastructure.repositories.models import BrandCampaignDB
+
+    campaign = session.get(BrandCampaignDB, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if campaign.creator_id != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    campaign.status = "accepted" if accept else "rejected"
+    session.add(campaign)
+    session.commit()
+
+    return {"success": True, "status": campaign.status}

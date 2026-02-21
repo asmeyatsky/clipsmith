@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 interface User {
     id: string;
@@ -8,24 +7,46 @@ interface User {
 }
 
 interface AuthState {
-    token: string | null;
     user: User | null;
-    setAuth: (token: string, user: User) => void;
+    isLoading: boolean;
+    setAuth: (user: User) => void;
     logout: () => void;
+    fetchCurrentUser: () => Promise<void>;
     isAuthenticated: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
-    persist(
-        (set, get) => ({
-            token: null,
-            user: null,
-            setAuth: (token, user) => set({ token, user }),
-            logout: () => set({ token: null, user: null }),
-            isAuthenticated: () => !!get().token,
-        }),
-        {
-            name: 'auth-storage',
-        }
-    )
+    (set, get) => ({
+        user: null,
+        isLoading: true,
+        setAuth: (user) => set({ user, isLoading: false }),
+        logout: async () => {
+            try {
+                await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+            } catch (e) {
+                console.error('Logout request failed:', e);
+            }
+            set({ user: null });
+        },
+        fetchCurrentUser: async () => {
+            set({ isLoading: true });
+            try {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/auth/me`, {
+                    credentials: 'include',
+                });
+                if (response.ok) {
+                    const user = await response.json();
+                    set({ user, isLoading: false });
+                } else {
+                    set({ user: null, isLoading: false });
+                }
+            } catch {
+                set({ user: null, isLoading: false });
+            }
+        },
+        isAuthenticated: () => !!get().user,
+    })
 );

@@ -1,9 +1,10 @@
 import { UserProfile, VideoResponseDTO } from '@/lib/types';
-import { User, Video as VideoIcon, Heart, UserPlus, UserMinus } from 'lucide-react'; // Import UserPlus, UserMinus
+import { User, Video as VideoIcon, Heart, UserPlus, UserMinus } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { useEffect, useState } from 'react';
-import { userService } from '@/lib/api/user'; // Assuming follow functions will be added here
-import { Button } from '@/components/ui/button'; // Import Button component
+import { userService } from '@/lib/api/user';
+import { Button } from '@/components/ui/button';
+import { sanitizeForReact } from '@/lib/utils/sanitize';
 
 interface ProfileHeaderProps {
     user: UserProfile;
@@ -55,7 +56,10 @@ export function ProfileHeader({ user, videos }: ProfileHeaderProps) {
 
                 {/* Info */}
                 <div className="text-center md:text-left flex-1">
-                    <h1 className="text-3xl font-bold mb-2">{user.username}</h1>
+                    <h1 
+                    className="text-3xl font-bold mb-2"
+                    dangerouslySetInnerHTML={{ __html: sanitizeForReact(user.username) }}
+                />
                     <p className="text-gray-500 dark:text-gray-400 mb-6">Content Creator</p>
 
                     {/* Stats */}

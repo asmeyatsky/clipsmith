@@ -145,8 +145,6 @@ export const useAuth = () => {
     if (process.env.NODE_ENV === 'development') console.log('Login attempt');
     // Mock successful login for demo user
     if (email === 'creator@clipsmith.com' && password === 'demo') {
-      user[1]({ ...user[1], created_at: '2024-01-10T00:00:00Z' });
-      localStorage.setItem('token', 'mock_dev_token');
       return { user: user[1], token: 'mock_dev_token' };
     }
     

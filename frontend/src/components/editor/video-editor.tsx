@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Timeline } from './timeline';
 import { usePayment } from '@/hooks/usePayment';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { DollarSign, TrendingUp, Users, Eye, Heart } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, Eye, Heart, Sparkles, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api/client';
+import { AdvancedEditorPanels } from './advanced-editor-panels';
+import { AIToolsPanel } from './ai-tools-panel';
 
 interface VideoEditorProps {
     projectId?: string;
@@ -62,6 +65,9 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     const [selectedAsset, setSelectedAsset] = useState<VideoAsset | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showMonetizationPanel, setShowMonetizationPanel] = useState(false);
+    const [showAITools, setShowAITools] = useState(false);
+    const [showAdvancedPanels, setShowAdvancedPanels] = useState(false);
+    const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const animationRef = useRef<number>();
 
@@ -73,38 +79,14 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
         if (!projectId) return;
         
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-            
-            // Load project
-            const projectResponse = await fetch(`/api/editor/projects/${projectId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (!projectResponse.ok) throw new Error('Failed to load project');
-            
-            const projectData = await projectResponse.json();
+            const projectData = await apiClient<{ project: VideoProject }>(`/api/editor/projects/${projectId}`);
             setProject(projectData.project);
             
-            // Load assets
-            const assetsResponse = await fetch(`/api/editor/projects/${projectId}/assets`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const assetsData = await apiClient<{ assets: VideoAsset[] }>(`/api/editor/projects/${projectId}/assets`);
+            setAssets(assetsData.assets);
             
-            if (assetsResponse.ok) {
-                const assetsData = await assetsResponse.json();
-                setAssets(assetsData.assets);
-            }
-            
-            // Load tracks
-            const tracksResponse = await fetch(`/api/editor/projects/${projectId}/tracks`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (tracksResponse.ok) {
-                const tracksData = await tracksResponse.json();
-                setTracks(tracksData.tracks);
-            }
+            const tracksData = await apiClient<{ tracks: VideoTrack[] }>(`/api/editor/projects/${projectId}/tracks`);
+            setTracks(tracksData.tracks);
             
         } catch (error) {
             console.error('Error loading project:', error);
@@ -124,18 +106,10 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
         formData.append('project_id', project.id);
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-
-            const response = await fetch(`/api/editor/projects/${project.id}/assets`, {
+            const result = await apiClient<{ asset: VideoAsset }>(`/api/editor/projects/${project.id}/assets`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
+                body: formData as unknown as string,
             });
-
-            if (!response.ok) throw new Error('Failed to upload asset');
-
-            const result = await response.json();
             setAssets(prev => [...prev, result.asset]);
             
         } catch (error) {
@@ -171,7 +145,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, []);
+    }, [loadProject]);
 
     const handleAddToTimeline = () => {
         if (!selectedAsset || !project) return;
@@ -192,21 +166,10 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
         if (!project) return;
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-
-            const response = await fetch(`/api/editor/projects/${project.id}/title`, {
+            const result = await apiClient<{ project: VideoProject }>(`/api/editor/projects/${project.id}/title`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `title=${encodeURIComponent(newTitle)}`
+                body: JSON.stringify({ title: newTitle }),
             });
-
-            if (!response.ok) throw new Error('Failed to update title');
-
-            const result = await response.json();
             setProject(result.project);
 
         } catch (error) {
@@ -361,20 +324,50 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                 </div>
 
                 {/* Properties Panel - Desktop */}
-                <div className="hidden lg:block w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">Properties</h3>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowMonetizationPanel(!showMonetizationPanel)}
-                            className="text-purple-500 hover:text-purple-600"
+                <div className="hidden lg:block w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
+                    {/* Panel Tabs */}
+                    <div className="flex gap-1 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                        <button
+                            onClick={() => { setShowMonetizationPanel(false); setShowAITools(false); setShowAdvancedPanels(false); }}
+                            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded ${!showMonetizationPanel && !showAITools && !showAdvancedPanels ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}
                         >
-                            <DollarSign size={16} />
-                        </Button>
+                            <Settings size={12} />
+                            Props
+                        </button>
+                        <button
+                            onClick={() => { setShowMonetizationPanel(false); setShowAITools(true); setShowAdvancedPanels(false); }}
+                            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded ${showAITools ? 'bg-purple-500 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}
+                        >
+                            <Sparkles size={12} />
+                            AI
+                        </button>
+                        <button
+                            onClick={() => { setShowMonetizationPanel(false); setShowAITools(false); setShowAdvancedPanels(true); }}
+                            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded ${showAdvancedPanels ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}
+                        >
+                            <Settings size={12} />
+                            Advanced
+                        </button>
+                        <button
+                            onClick={() => { setShowMonetizationPanel(true); setShowAITools(false); setShowAdvancedPanels(false); }}
+                            className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded ${showMonetizationPanel ? 'bg-yellow-500 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}
+                        >
+                            <DollarSign size={12} />
+                            Monetize
+                        </button>
                     </div>
-                    
-                    {showMonetizationPanel ? (
+
+                    {showAITools ? (
+                        <AIToolsPanel projectId={projectId} />
+                    ) : showAdvancedPanels ? (
+                        selectedTrackId ? (
+                            <AdvancedEditorPanels projectId={projectId || ''} trackId={selectedTrackId} />
+                        ) : (
+                            <div className="text-center py-8 text-gray-500">
+                                <p className="text-sm">Select a track to edit advanced properties</p>
+                            </div>
+                        )
+                    ) : showMonetizationPanel ? (
                         <MonetizationPanel 
                             project={project}
                             selectedAsset={selectedAsset}
@@ -444,22 +437,13 @@ function MonetizationPanel({ project, selectedAsset, tracks }: MonetizationPanel
         if (!project) return;
         
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-
-            const response = await fetch(`/api/editor/projects/${project.id}/monetization`, {
+            await apiClient(`/api/editor/projects/${project.id}/monetization`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     feature,
                     enabled
                 })
             });
-
-            if (!response.ok) throw new Error('Failed to update monetization');
 
             trackEvent('monetization_updated', {
                 projectId: project.id,

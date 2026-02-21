@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { interactionService, Comment } from '@/lib/api/interactions';
 import { Send, User } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth/auth-store';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { sanitizeForReact } from '@/lib/utils/sanitize';
 
 interface CommentsSectionProps {
     videoId: string;
@@ -75,14 +76,15 @@ export function CommentsSection({ videoId, isOpen, onClose }: CommentsSectionPro
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold flex items-center gap-2">
-                                        {comment.username}
+                                        <span dangerouslySetInnerHTML={{ __html: sanitizeForReact(comment.username) }} />
                                         <span className="text-xs text-gray-400 font-normal">
                                             {new Date(comment.created_at).toLocaleDateString()}
                                         </span>
                                     </p>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">
-                                        {comment.content}
-                                    </p>
+                                    <p 
+                                        className="text-sm text-gray-700 dark:text-gray-300 mt-0.5"
+                                        dangerouslySetInnerHTML={{ __html: sanitizeForReact(comment.content) }}
+                                    />
                                 </div>
                             </div>
                         ))

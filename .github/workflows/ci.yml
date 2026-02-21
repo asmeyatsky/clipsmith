@@ -51,7 +51,17 @@ jobs:
 
     - name: Security dependency audit
       working-directory: ./backend
-      run: pip audit || true
+      run: |
+        pip install pip-audit
+        pip-audit -r requirements.txt || true
+        pip audit || true
+
+    - name: Check for known vulnerabilities
+      working-directory: ./backend
+      run: |
+        pip install safety
+        safety check --json > vulnerability-report.json || true
+        cat vulnerability-report.json
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -78,7 +88,15 @@ jobs:
 
     - name: Security dependency audit
       working-directory: ./frontend
-      run: npm audit --production || true
+      run: |
+        npm audit --production || true
+        npm audit --audit-level=high || true
+
+    - name: Check for vulnerabilities with snyk
+      working-directory: ./frontend
+      run: |
+        npm install -g snyk
+        snyk test || true
 
   docker-build:
     runs-on: ubuntu-latest

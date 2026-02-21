@@ -1,5 +1,14 @@
 import math
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    UploadFile,
+    File,
+    Form,
+    HTTPException,
+    status,
+    Request,
+)
 from typing import Annotated, List
 from fastapi.security import OAuth2PasswordBearer
 
@@ -70,9 +79,20 @@ def get_storage_adapter_dep() -> StoragePort:
 
 
 def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
     user_repo: UserRepositoryPort = Depends(get_user_repo),
 ):
+    token = request.cookies.get("access_token")
+    if not token:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = JWTAdapter.verify_token(token)
     if not payload:
         raise HTTPException(
@@ -310,7 +330,10 @@ def toggle_like(
         except Exception as e:
             # Log error but don't fail the request
             import logging
-            logging.getLogger(__name__).warning("Failed to send like notification: %s", e)
+
+            logging.getLogger(__name__).warning(
+                "Failed to send like notification: %s", e
+            )
 
     return {"message": "Success", "is_liked": is_liked}
 
@@ -359,7 +382,9 @@ def add_comment(
             )
             notification_service.send_notification(notification)
     except Exception as e:
-        logging.getLogger(__name__).warning("Failed to send comment notification: %s", e)
+        logging.getLogger(__name__).warning(
+            "Failed to send comment notification: %s", e
+        )
 
     return CommentResponseDTO(
         id=comment.id,

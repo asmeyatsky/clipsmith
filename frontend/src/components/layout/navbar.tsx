@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { LogOut, User, Video, Search, Moon, Sun, X } from 'lucide-react';
+import { LogOut, User, Video, Search, Moon, Sun, X, Sparkles, DollarSign, Layout, Compass } from 'lucide-react';
 import { UploadModal } from '@/components/video/upload-modal';
 
 export function Navbar() {
@@ -82,7 +82,25 @@ export function Navbar() {
                     </Button>
 
                     {user ? (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <Link href="/discover">
+                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                    <Compass className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Discover</span>
+                                </Button>
+                            </Link>
+                            <Link href="/templates">
+                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                    <Layout className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Templates</span>
+                                </Button>
+                            </Link>
+                            <Link href="/monetization">
+                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                    <DollarSign className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Earn</span>
+                                </Button>
+                            </Link>
                             <UploadModal onUploadSuccess={() => window.location.reload()} />
                             <Link href={`/profile/${user.username}`}>
                                 <Button variant="ghost" size="icon" className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900">

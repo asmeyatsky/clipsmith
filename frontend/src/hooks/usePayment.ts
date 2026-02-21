@@ -59,12 +59,11 @@ class PaymentAPI {
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
-    const token = localStorage.getItem('token');
     const response = await fetch(`${this.baseUrl}/api${endpoint}`, {
       ...options,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
         ...options.headers,
       },
     });

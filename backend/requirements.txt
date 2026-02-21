@@ -63,3 +63,6 @@ structlog==23.3.0  # Structured logging
 python-json-logger==2.0.8  # JSON logging utilities
 prometheus-client==0.21.0  # Prometheus metrics
 psutil==6.1.0  # System monitoring
+bleach==6.2.0  # HTML sanitization
+pyotp==2.9.0  # TOTP for 2FA
+qrcode[pil]==7.4.2  # QR code generation

@@ -16,6 +16,7 @@ export function RegisterForm() {
             await apiClient('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(formData),
+                credentials: 'include',
             });
             router.push('/login');
         } catch (err: any) {

@@ -120,6 +120,7 @@ class ContentModerationDB(SQLModel, table=True):
     reviewed_at: datetime | None = Field(default=None)
     completed_at: datetime | None = Field(default=None)
 
+
 class EmailVerificationDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
@@ -129,6 +130,7 @@ class EmailVerificationDB(SQLModel, table=True):
     expires_at: datetime = Field(index=True)
     created_at: datetime = Field(default_factory=datetime.now)
     verified_at: datetime | None = Field(default=None)
+
 
 class TwoFactorSecretDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -140,6 +142,7 @@ class TwoFactorSecretDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     last_used_at: datetime | None = Field(default=None)
 
+
 class TwoFactorVerificationDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
@@ -149,6 +152,7 @@ class TwoFactorVerificationDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     used_at: datetime | None = Field(default=False)
     is_verified: bool = Field(default=False)
+
 
 class VideoProjectDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -162,8 +166,11 @@ class VideoProjectDB(SQLModel, table=True):
     updated_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     settings: Optional[str] = Field(default=None)  # JSON string
-    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})  # JSON string
+    extra_metadata: Optional[str] = Field(
+        default=None, sa_column_kwargs={"name": "extra_metadata"}
+    )  # JSON string
     permission: str = Field(default="private", index=True)
+
 
 class VideoEditorAssetDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -172,9 +179,12 @@ class VideoEditorAssetDB(SQLModel, table=True):
     name: str
     original_url: Optional[str] = None
     storage_url: Optional[str] = None
-    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})
+    extra_metadata: Optional[str] = Field(
+        default=None, sa_column_kwargs={"name": "extra_metadata"}
+    )
     duration: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class VideoEditorTransitionDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -187,6 +197,7 @@ class VideoEditorTransitionDB(SQLModel, table=True):
     easing: str = Field(default="linear")
     parameters: Optional[str] = None
 
+
 class VideoEditorTrackDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     project_id: str = Field(index=True)
@@ -195,6 +206,7 @@ class VideoEditorTrackDB(SQLModel, table=True):
     start_time: float = Field(default=0.0)
     end_time: float = Field(default=0.0)
     content: Optional[str] = Field(default=None)  # JSON string
+
 
 class VideoEditorCaptionDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -209,12 +221,234 @@ class VideoEditorCaptionDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
 
 
+class VideoEditorKeyframeDB(SQLModel, table=True):
+    """Keyframe support for animations and effects."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    track_id: str = Field(index=True)
+    property_name: str  # e.g., "opacity", "scale", "position"
+    time: float
+    value: str  # JSON value (can be number, string, or array for position)
+    easing: str = Field(default="linear")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class VideoEditorColorGradeDB(SQLModel, table=True):
+    """Color grading settings for video tracks."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    track_id: str = Field(index=True)
+    brightness: float = Field(default=0.0)  # -100 to 100
+    contrast: float = Field(default=0.0)  # -100 to 100
+    saturation: float = Field(default=0.0)  # -100 to 100
+    temperature: float = Field(default=0.0)  # -100 to 100 (cool to warm)
+    tint: float = Field(default=0.0)  # -100 to 100 (green to magenta)
+    highlights: float = Field(default=0.0)  # -100 to 100
+    shadows: float = Field(default=0.0)  # -100 to 100
+    vibrance: float = Field(default=0.0)  # -100 to 100
+    filters: Optional[str] = Field(default=None)  # JSON array of filter names
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class VideoEditorAudioMixDB(SQLModel, table=True):
+    """Audio mixing settings for tracks."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    track_id: str = Field(index=True)
+    volume: float = Field(default=1.0)  # 0.0 to 2.0
+    pan: float = Field(default=0.0)  # -1.0 (left) to 1.0 (right)
+    mute: bool = Field(default=False)
+    solo: bool = Field(default=False)
+    fade_in: float = Field(default=0.0)  # seconds
+    fade_out: float = Field(default=0.0)  # seconds
+    equalizer: Optional[str] = Field(
+        default=None
+    )  # JSON: {"low": 0, "mid": 0, "high": 0}
+    audio_effects: Optional[str] = Field(default=None)  # JSON array of effect names
+    duck_others: bool = Field(default=False)  # Lower other tracks when this one plays
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class VideoEditorChromaKeyDB(SQLModel, table=True):
+    """Chroma key (green screen) settings."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    track_id: str = Field(index=True)
+    enabled: bool = Field(default=False)
+    key_color: str = Field(default="#00FF00")  # RGB hex color
+    similarity: float = Field(default=0.4)  # 0.0 to 1.0
+    smoothness: float = Field(default=0.1)  # 0.0 to 1.0
+    spill_suppression: float = Field(default=0.1)  # 0.0 to 1.0
+    background_type: str = Field(default="none")  # none, color, image, video
+    background_value: Optional[str] = None  # color hex, image URL, or video asset ID
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class VideoEditorEffectDB(SQLModel, table=True):
+    """Effects that can be applied to tracks."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    track_id: str = Field(index=True)
+    effect_type: str  # blur, sharpen, distort, etc.
+    parameters: str  # JSON object with effect-specific params
+    start_time: float = Field(default=0.0)
+    end_time: float = Field(default=0.0)
+    enabled: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# AI-Powered Tools Models
+class AICaptionJobDB(SQLModel, table=True):
+    """AI-generated caption jobs."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    video_asset_id: str = Field(index=True)
+    status: str = Field(
+        default="pending", index=True
+    )  # pending, processing, completed, failed
+    language: str = Field(default="en")
+    result: Optional[str] = None  # JSON array of captions
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+
+class AITemplateDB(SQLModel, table=True):
+    """AI-generated templates."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    name: str
+    description: Optional[str] = None
+    category: str = Field(index=True)  # intro, outro, social, promo, etc.
+    style: str  # modern, vintage, cinematic, etc.
+    thumbnail_url: Optional[str] = None
+    project_data: str  # JSON project structure
+    is_premium: bool = Field(default=False)
+    price: float = Field(default=0.0)
+    usage_count: int = Field(default=0)
+    creator_id: Optional[str] = Field(index=True)
+    is_public: bool = Field(default=True)
+    tags: Optional[str] = None  # JSON array
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class AIVideoGenerationDB(SQLModel, table=True):
+    """AI video generation jobs (text-to-video, image-to-video)."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    generation_type: str  # text_to_video, image_to_video, style_transfer
+    prompt: str
+    negative_prompt: Optional[str] = None
+    duration: float = Field(default=5.0)  # seconds
+    status: str = Field(default="pending", index=True)
+    model_version: str = Field(default="v1")
+    settings: Optional[str] = None  # JSON: resolution, fps, etc.
+    result_url: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+
+class AIVoiceOverDB(SQLModel, table=True):
+    """AI voice-over generation jobs."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    text: str
+    voice_id: str  # Voice model ID
+    language: str = Field(default="en")
+    speed: float = Field(default=1.0)
+    status: str = Field(default="pending", index=True)
+    result_url: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+
+# Premium Content Models
+class PremiumContentDB(SQLModel, table=True):
+    """Premium/pay-per-view content."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    video_id: str = Field(index=True)
+    price: float
+    currency: str = Field(default="USD")
+    description: Optional[str] = None
+    is_active: bool = Field(default=True)
+    purchase_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class PremiumPurchaseDB(SQLModel, table=True):
+    """Records of premium content purchases."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    premium_content_id: str = Field(index=True)
+    amount: float
+    currency: str = Field(default="USD")
+    stripe_payment_id: Optional[str] = Field(index=True)
+    status: str = Field(default="pending")  # pending, completed, refunded
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# Brand Collaboration Models
+class BrandCampaignDB(SQLModel, table=True):
+    """Brand collaboration campaigns."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    brand_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    title: str
+    description: Optional[str] = None
+    budget: float
+    requirements: Optional[str] = None  # JSON
+    deliverables: Optional[str] = None  # JSON
+    deadline: Optional[datetime] = None
+    status: str = Field(
+        default="pending"
+    )  # pending, accepted, rejected, completed, cancelled
+    payment_status: str = Field(default="unpaid")  # unpaid, paid
+    stripe_payment_id: Optional[str] = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class BrandProfileDB(SQLModel, table=True):
+    """Brand/company profiles for collaborations."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(unique=True, index=True)  # The brand's user account
+    company_name: str
+    industry: str
+    website: Optional[str] = None
+    description: Optional[str] = None
+    logo_url: Optional[str] = None
+    is_verified: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
 
 
 # Payment and Wallet Models
 class TransactionDB(SQLModel, table=True):
     __tablename__ = "transactions"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(foreign_key="users.id")
     amount: float
@@ -223,18 +457,20 @@ class TransactionDB(SQLModel, table=True):
     status: str = Field(default="pending", index=True)  # TransactionStatus enum value
     description: Optional[str] = None
     reference_id: Optional[str] = Field(index=True)  # External reference
-    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})  # JSON string
+    extra_metadata: Optional[str] = Field(
+        default=None, sa_column_kwargs={"name": "extra_metadata"}
+    )  # JSON string
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    
+
     # Relationships
     user: "UserDB" = Relationship(back_populates="transactions")
 
 
 class CreatorWalletDB(SQLModel, table=True):
     __tablename__ = "creator_wallets"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(foreign_key="users.id", unique=True, index=True)
     balance: float = Field(default=0.0)
@@ -249,7 +485,7 @@ class CreatorWalletDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     last_payout_at: Optional[datetime] = None
-    
+
     # Relationships
     user: "UserDB" = Relationship(back_populates="wallet")
     transactions: List["TransactionDB"] = Relationship(back_populates="user")
@@ -258,7 +494,7 @@ class CreatorWalletDB(SQLModel, table=True):
 
 class PayoutDB(SQLModel, table=True):
     __tablename__ = "payouts"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     wallet_id: str = Field(foreign_key="creator_wallets.id")
     user_id: str = Field(foreign_key="users.id", index=True)
@@ -270,22 +506,26 @@ class PayoutDB(SQLModel, table=True):
     fee_amount: float = Field(default=0.0)
     net_amount: float
     description: Optional[str] = None
-    extra_metadata: Optional[str] = Field(default=None, sa_column_kwargs={"name": "extra_metadata"})  # JSON string
+    extra_metadata: Optional[str] = Field(
+        default=None, sa_column_kwargs={"name": "extra_metadata"}
+    )  # JSON string
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     failed_reason: Optional[str] = None
-    
+
     # Relationships
     wallet: "CreatorWalletDB" = Relationship(back_populates="payouts")
 
 
 class SubscriptionDB(SQLModel, table=True):
     __tablename__ = "subscriptions"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(foreign_key="users.id", index=True)  # Subscriber
-    creator_id: str = Field(foreign_key="users.id", index=True)  # Creator being subscribed to
+    creator_id: str = Field(
+        foreign_key="users.id", index=True
+    )  # Creator being subscribed to
     stripe_subscription_id: str = Field(unique=True, index=True)
     status: str = Field(index=True)  # Stripe subscription status
     amount: float
@@ -297,7 +537,7 @@ class SubscriptionDB(SQLModel, table=True):
     ended_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
-    
+
     # Relationships
     subscriber: "UserDB" = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[SubscriptionDB.user_id]"}
@@ -310,7 +550,7 @@ class SubscriptionDB(SQLModel, table=True):
 # Analytics Database Models
 class VideoAnalyticsDB(SQLModel, table=True):
     __tablename__ = "video_analytics"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     video_id: str = Field(index=True)
     user_id: str = Field(index=True)
@@ -332,7 +572,7 @@ class VideoAnalyticsDB(SQLModel, table=True):
 
 class CreatorAnalyticsDB(SQLModel, table=True):
     __tablename__ = "creator_analytics"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
     period: str = Field(index=True)  # TimePeriod enum value
@@ -361,7 +601,7 @@ class CreatorAnalyticsDB(SQLModel, table=True):
 
 class TimeSeriesDataDB(SQLModel, table=True):
     __tablename__ = "time_series_data"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
     metric_type: str = Field(index=True)  # MetricType enum value
@@ -374,7 +614,7 @@ class TimeSeriesDataDB(SQLModel, table=True):
 
 class AudienceDemographicsDB(SQLModel, table=True):
     __tablename__ = "audience_demographics"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
     age_groups: Optional[str] = Field(default=None)  # JSON string
@@ -389,7 +629,7 @@ class AudienceDemographicsDB(SQLModel, table=True):
 
 class ContentPerformanceDB(SQLModel, table=True):
     __tablename__ = "content_performance"
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
     video_id: str = Field(index=True)
@@ -409,4 +649,18 @@ class ContentPerformanceDB(SQLModel, table=True):
     first_24h_views: int = Field(default=0)
     first_7d_views: int = Field(default=0)
     created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    updated_at: Optional[datetime] = None
+
+
+class ProjectMonetizationDB(SQLModel, table=True):
+    __tablename__ = "project_monetization"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(unique=True, index=True)
+    tips_enabled: bool = Field(default=True)
+    subscriptions_enabled: bool = Field(default=False)
+    suggested_tip_amounts: str = Field(default="[1, 5, 10, 20]")
+    subscription_price: float = Field(default=9.99)
+    subscription_tier_name: str = Field(default="Premium")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None

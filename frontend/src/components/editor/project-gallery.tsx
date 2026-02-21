@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { sanitizeForReact } from '@/lib/utils/sanitize';
+import { apiClient } from '@/lib/api/client';
 
 interface VideoProject {
     id: string;
@@ -29,20 +31,11 @@ export function ProjectGallery({ onProjectSelect, onCreateNew }: ProjectGalleryP
 
     const loadProjects = async () => {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-
             const url = filter === 'all' 
                 ? '/api/editor/projects'
                 : `/api/editor/projects?status=${filter}`;
 
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (!response.ok) throw new Error('Failed to load projects');
-
-            const data = await response.json();
+            const data = await apiClient<{ projects: VideoProject[] }>(url);
             setProjects(data.projects);
 
         } catch (error) {
@@ -54,21 +47,10 @@ export function ProjectGallery({ onProjectSelect, onCreateNew }: ProjectGalleryP
 
     const createNewProject = async () => {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-
-            const response = await fetch('/api/editor/projects', {
+            const data = await apiClient<{ project: VideoProject }>('/api/editor/projects', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'title=New Project'
+                body: JSON.stringify({ title: 'New Project' }),
             });
-
-            if (!response.ok) throw new Error('Failed to create project');
-
-            const data = await response.json();
             setProjects(prev => [data.project, ...prev]);
             onProjectSelect(data.project.id);
 
@@ -81,16 +63,9 @@ export function ProjectGallery({ onProjectSelect, onCreateNew }: ProjectGalleryP
         if (!confirm('Are you sure you want to delete this project?')) return;
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) throw new Error('No authentication token');
-
-            const response = await fetch(`/api/editor/projects/${projectId}`, {
+            await apiClient(`/api/editor/projects/${projectId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            if (!response.ok) throw new Error('Failed to delete project');
-
             setProjects(prev => prev.filter(p => p.id !== projectId));
 
         } catch (error) {
@@ -202,14 +177,16 @@ export function ProjectGallery({ onProjectSelect, onCreateNew }: ProjectGalleryP
 
                             {/* Project Info */}
                             <div className="p-4">
-                                <h3 className="font-semibold text-lg mb-1 truncate">
-                                    {project.title}
-                                </h3>
+                                <h3 
+                                    className="font-semibold text-lg mb-1 truncate"
+                                    dangerouslySetInnerHTML={{ __html: sanitizeForReact(project.title) }}
+                                />
                                 
                                 {project.description && (
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                                        {project.description}
-                                    </p>
+                                    <p 
+                                        className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2"
+                                        dangerouslySetInnerHTML={{ __html: sanitizeForReact(project.description) }}
+                                    />
                                 )}
 
                                 <div className="flex items-center justify-between text-xs text-gray-500 mb-3">

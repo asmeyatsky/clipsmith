@@ -13,6 +13,7 @@ from .presentation.api.monitoring_router import router as monitoring_router
 from .presentation.api.video_editor_router import router as video_editor_router
 from .presentation.api.payment_router import router as payment_router
 from .presentation.api.analytics_router import router as analytics_router
+from .presentation.api.ai_router import router as ai_router
 from .presentation.middleware.monitoring_middleware import (
     MonitoringMiddleware,
     HealthCheckMiddleware,
@@ -47,9 +48,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
         if os.getenv("ENVIRONMENT") == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
         return response
 
 
@@ -90,6 +95,7 @@ app.include_router(moderation_router)
 app.include_router(video_editor_router)
 app.include_router(payment_router)
 app.include_router(analytics_router)
+app.include_router(ai_router)
 
 
 @app.get("/")

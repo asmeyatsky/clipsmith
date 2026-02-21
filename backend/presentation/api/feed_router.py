@@ -184,3 +184,66 @@ def get_trending_feed(
         page_size=page_size,
         total_pages=total_pages,
     )
+
+
+@router.get("/categories")
+def get_categories(
+    video_repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    """Get available video categories."""
+    categories = [
+        {"id": "entertainment", "name": "Entertainment", "icon": "🎬"},
+        {"id": "gaming", "name": "Gaming", "icon": "🎮"},
+        {"id": "music", "name": "Music", "icon": "🎵"},
+        {"id": "education", "name": "Education", "icon": "📚"},
+        {"id": "sports", "name": "Sports", "icon": "⚽"},
+        {"id": "comedy", "name": "Comedy", "icon": "😂"},
+        {"id": "news", "name": "News", "icon": "📰"},
+        {"id": "tech", "name": "Technology", "icon": "💻"},
+        {"id": "fashion", "name": "Fashion", "icon": "👗"},
+        {"id": "food", "name": "Food", "icon": "🍳"},
+        {"id": "travel", "name": "Travel", "icon": "✈️"},
+        {"id": "fitness", "name": "Fitness", "icon": "💪"},
+    ]
+    return {"categories": categories}
+
+
+@router.get("/recommended", response_model=PaginatedVideoResponseDTO)
+def get_recommended_for_you(
+    page: int = 1,
+    page_size: int = 20,
+    video_repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    """Get recommended videos based on engagement patterns."""
+    videos = video_repo.find_all(offset=(page - 1) * page_size, limit=page_size * 3)
+
+    recommended = sorted(videos, key=lambda v: v.views + v.likes * 5, reverse=True)[
+        :page_size
+    ]
+
+    total_count = len(recommended)
+
+    video_responses = [
+        VideoResponseDTO(
+            id=v.id,
+            title=v.title,
+            description=v.description,
+            creator_id=v.creator_id,
+            url=v.url,
+            thumbnail_url=v.thumbnail_url,
+            status=v.status,
+            views=v.views,
+            likes=v.likes,
+            duration=v.duration,
+            created_at=v.created_at,
+        )
+        for v in recommended
+    ]
+
+    return PaginatedVideoResponseDTO(
+        items=video_responses,
+        total=total_count,
+        page=page,
+        page_size=page_size,
+        total_pages=(total_count + page_size - 1) // page_size,
+    )

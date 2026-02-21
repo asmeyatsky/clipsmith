@@ -7,18 +7,21 @@ export function getBaseUrl() {
 }
 
 export async function apiClient<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const { token } = useAuthStore.getState();
-
     const headers = {
         'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
     };
 
     const response = await fetch(`${BASE_URL}${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include',
     });
+
+    if (response.status === 401) {
+        useAuthStore.getState().logout();
+        throw new Error('Session expired. Please log in again.');
+    }
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'API request failed' }));
