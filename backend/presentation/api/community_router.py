@@ -29,7 +29,7 @@ def create_circle(
         "id": str(uuid.uuid4()),
         "name": name,
         "description": description,
-        "owner_id": current_user.id,
+        "user_id": current_user.id,
         "created_at": datetime.utcnow().isoformat(),
     }
 
@@ -40,7 +40,7 @@ def create_circle(
         id=circle["id"],
         name=name,
         description=description,
-        owner_id=current_user.id,
+        user_id=current_user.id,
     )
     session.add(db_circle)
     session.commit()
@@ -57,7 +57,7 @@ def get_user_circles(
     from ...infrastructure.repositories.models import CircleDB
 
     circles = session.exec(
-        select(CircleDB).where(CircleDB.owner_id == current_user.id)
+        select(CircleDB).where(CircleDB.user_id == current_user.id)
     ).all()
 
     return {
@@ -67,7 +67,7 @@ def get_user_circles(
                 "id": c.id,
                 "name": c.name,
                 "description": c.description,
-                "owner_id": c.owner_id,
+                "user_id": c.user_id,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
             }
             for c in circles
@@ -89,7 +89,7 @@ def add_to_circle(
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
 
-    if circle.owner_id != current_user.id:
+    if circle.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the circle owner can add members")
 
     member_id = request_body.get("member_id")
@@ -132,7 +132,7 @@ def remove_from_circle(
     if not circle:
         raise HTTPException(status_code=404, detail="Circle not found")
 
-    if circle.owner_id != current_user.id:
+    if circle.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the circle owner can remove members")
 
     membership = session.exec(
@@ -191,7 +191,7 @@ def create_group(
     session: Session = Depends(get_session),
 ):
     """Create a new community group."""
-    from ...infrastructure.repositories.models import GroupDB
+    from ...infrastructure.repositories.models import CommunityGroupDB
 
     name = request_body.get("name")
     description = request_body.get("description", "")
@@ -201,13 +201,13 @@ def create_group(
     if not name:
         raise HTTPException(status_code=400, detail="Group name is required")
 
-    group = GroupDB(
+    group = CommunityGroupDB(
         id=str(uuid.uuid4()),
         name=name,
         description=description,
         rules=rules,
         is_public=is_public,
-        owner_id=current_user.id,
+        creator_id=current_user.id,
     )
     session.add(group)
     session.commit()
@@ -219,7 +219,7 @@ def create_group(
             "name": group.name,
             "description": group.description,
             "is_public": group.is_public,
-            "owner_id": group.owner_id,
+            "creator_id": group.creator_id,
         },
     }
 
@@ -231,11 +231,11 @@ def list_groups(
     session: Session = Depends(get_session),
 ):
     """List public community groups."""
-    from ...infrastructure.repositories.models import GroupDB
+    from ...infrastructure.repositories.models import CommunityGroupDB
 
     groups = session.exec(
-        select(GroupDB)
-        .where(GroupDB.is_public == True)
+        select(CommunityGroupDB)
+        .where(CommunityGroupDB.is_public == True)
         .offset(offset)
         .limit(limit)
     ).all()
@@ -248,7 +248,7 @@ def list_groups(
                 "name": g.name,
                 "description": g.description,
                 "is_public": g.is_public,
-                "owner_id": g.owner_id,
+                "creator_id": g.creator_id,
                 "created_at": g.created_at.isoformat() if g.created_at else None,
             }
             for g in groups
@@ -262,9 +262,9 @@ def get_group(
     session: Session = Depends(get_session),
 ):
     """Get details of a specific group."""
-    from ...infrastructure.repositories.models import GroupDB
+    from ...infrastructure.repositories.models import CommunityGroupDB
 
-    group = session.get(GroupDB, group_id)
+    group = session.get(CommunityGroupDB, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
@@ -276,7 +276,7 @@ def get_group(
             "description": group.description,
             "rules": group.rules,
             "is_public": group.is_public,
-            "owner_id": group.owner_id,
+            "creator_id": group.creator_id,
             "created_at": group.created_at.isoformat() if group.created_at else None,
         },
     }
@@ -289,23 +289,23 @@ def join_group(
     session: Session = Depends(get_session),
 ):
     """Join a community group."""
-    from ...infrastructure.repositories.models import GroupDB, GroupMemberDB
+    from ...infrastructure.repositories.models import CommunityGroupDB, CommunityMemberDB
 
-    group = session.get(GroupDB, group_id)
+    group = session.get(CommunityGroupDB, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
     existing = session.exec(
-        select(GroupMemberDB).where(
-            GroupMemberDB.group_id == group_id,
-            GroupMemberDB.user_id == current_user.id,
+        select(CommunityMemberDB).where(
+            CommunityMemberDB.group_id == group_id,
+            CommunityMemberDB.user_id == current_user.id,
         )
     ).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="Already a member of this group")
 
-    membership = GroupMemberDB(
+    membership = CommunityMemberDB(
         id=str(uuid.uuid4()),
         group_id=group_id,
         user_id=current_user.id,
@@ -324,12 +324,12 @@ def leave_group(
     session: Session = Depends(get_session),
 ):
     """Leave a community group."""
-    from ...infrastructure.repositories.models import GroupMemberDB
+    from ...infrastructure.repositories.models import CommunityMemberDB
 
     membership = session.exec(
-        select(GroupMemberDB).where(
-            GroupMemberDB.group_id == group_id,
-            GroupMemberDB.user_id == current_user.id,
+        select(CommunityMemberDB).where(
+            CommunityMemberDB.group_id == group_id,
+            CommunityMemberDB.user_id == current_user.id,
         )
     ).first()
 
@@ -350,21 +350,21 @@ def create_discussion_post(
     session: Session = Depends(get_session),
 ):
     """Create a discussion post in a group."""
-    from ...infrastructure.repositories.models import GroupDB, GroupMemberDB, DiscussionPostDB
+    from ...infrastructure.repositories.models import CommunityGroupDB, CommunityMemberDB, DiscussionPostDB
 
-    group = session.get(GroupDB, group_id)
+    group = session.get(CommunityGroupDB, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
     # Verify membership
     membership = session.exec(
-        select(GroupMemberDB).where(
-            GroupMemberDB.group_id == group_id,
-            GroupMemberDB.user_id == current_user.id,
+        select(CommunityMemberDB).where(
+            CommunityMemberDB.group_id == group_id,
+            CommunityMemberDB.user_id == current_user.id,
         )
     ).first()
 
-    if not membership and group.owner_id != current_user.id:
+    if not membership and group.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Must be a group member to post")
 
     content = request_body.get("content")
@@ -376,7 +376,7 @@ def create_discussion_post(
     post = DiscussionPostDB(
         id=str(uuid.uuid4()),
         group_id=group_id,
-        author_id=current_user.id,
+        user_id=current_user.id,
         content=content,
         parent_id=parent_id,
     )
@@ -388,7 +388,7 @@ def create_discussion_post(
         "post": {
             "id": post.id,
             "group_id": post.group_id,
-            "author_id": post.author_id,
+            "user_id": post.user_id,
             "content": post.content,
             "parent_id": post.parent_id,
             "created_at": post.created_at.isoformat() if post.created_at else None,
@@ -404,9 +404,9 @@ def get_discussion_posts(
     session: Session = Depends(get_session),
 ):
     """Get discussion posts for a group."""
-    from ...infrastructure.repositories.models import GroupDB, DiscussionPostDB
+    from ...infrastructure.repositories.models import CommunityGroupDB, DiscussionPostDB
 
-    group = session.get(GroupDB, group_id)
+    group = session.get(CommunityGroupDB, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
@@ -423,7 +423,7 @@ def get_discussion_posts(
             {
                 "id": p.id,
                 "group_id": p.group_id,
-                "author_id": p.author_id,
+                "user_id": p.user_id,
                 "content": p.content,
                 "parent_id": p.parent_id,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -443,7 +443,7 @@ def create_event(
     session: Session = Depends(get_session),
 ):
     """Create a community event."""
-    from ...infrastructure.repositories.models import CommunityEventDB
+    from ...infrastructure.repositories.models import EventDB
 
     title = request_body.get("title")
     description = request_body.get("description", "")
@@ -459,7 +459,7 @@ def create_event(
     if not start_time:
         raise HTTPException(status_code=400, detail="Start time is required")
 
-    event = CommunityEventDB(
+    event = EventDB(
         id=str(uuid.uuid4()),
         title=title,
         description=description,
@@ -469,7 +469,7 @@ def create_event(
         location=location,
         max_attendees=max_attendees,
         group_id=group_id,
-        organizer_id=current_user.id,
+        creator_id=current_user.id,
     )
     session.add(event)
     session.commit()
@@ -482,7 +482,7 @@ def create_event(
             "event_type": event.event_type,
             "start_time": event.start_time,
             "end_time": event.end_time,
-            "organizer_id": event.organizer_id,
+            "creator_id": event.creator_id,
         },
     }
 
@@ -494,11 +494,11 @@ def get_events(
     session: Session = Depends(get_session),
 ):
     """Get community events, optionally filtered by group."""
-    from ...infrastructure.repositories.models import CommunityEventDB
+    from ...infrastructure.repositories.models import EventDB
 
-    query = select(CommunityEventDB)
+    query = select(EventDB)
     if group_id:
-        query = query.where(CommunityEventDB.group_id == group_id)
+        query = query.where(EventDB.group_id == group_id)
     query = query.limit(limit)
 
     events = session.exec(query).all()
@@ -516,7 +516,7 @@ def get_events(
                 "location": e.location,
                 "max_attendees": e.max_attendees,
                 "group_id": e.group_id,
-                "organizer_id": e.organizer_id,
+                "creator_id": e.creator_id,
             }
             for e in events
         ],
@@ -531,9 +531,9 @@ def rsvp_event(
     session: Session = Depends(get_session),
 ):
     """RSVP to a community event."""
-    from ...infrastructure.repositories.models import CommunityEventDB, EventRsvpDB
+    from ...infrastructure.repositories.models import EventDB, EventAttendeeDB
 
-    event = session.get(CommunityEventDB, event_id)
+    event = session.get(EventDB, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
@@ -543,21 +543,21 @@ def rsvp_event(
 
     # Check for existing RSVP
     existing = session.exec(
-        select(EventRsvpDB).where(
-            EventRsvpDB.event_id == event_id,
-            EventRsvpDB.user_id == current_user.id,
+        select(EventAttendeeDB).where(
+            EventAttendeeDB.event_id == event_id,
+            EventAttendeeDB.user_id == current_user.id,
         )
     ).first()
 
     if existing:
-        existing.status = rsvp_status
+        existing.rsvp_status = rsvp_status
         session.add(existing)
     else:
-        rsvp = EventRsvpDB(
+        rsvp = EventAttendeeDB(
             id=str(uuid.uuid4()),
             event_id=event_id,
             user_id=current_user.id,
-            status=rsvp_status,
+            rsvp_status=rsvp_status,
         )
         session.add(rsvp)
 

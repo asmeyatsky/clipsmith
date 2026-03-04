@@ -35,7 +35,7 @@ def create_playlist(
         description=description,
         is_collaborative=is_collaborative,
         is_public=is_public,
-        owner_id=current_user.id,
+        creator_id=current_user.id,
     )
     session.add(playlist)
     session.commit()
@@ -48,7 +48,7 @@ def create_playlist(
             "description": playlist.description,
             "is_collaborative": playlist.is_collaborative,
             "is_public": playlist.is_public,
-            "owner_id": playlist.owner_id,
+            "creator_id": playlist.creator_id,
         },
     }
 
@@ -62,7 +62,7 @@ def get_user_playlists(
     from ...infrastructure.repositories.models import PlaylistDB
 
     playlists = session.exec(
-        select(PlaylistDB).where(PlaylistDB.owner_id == current_user.id)
+        select(PlaylistDB).where(PlaylistDB.creator_id == current_user.id)
     ).all()
 
     return {
@@ -105,7 +105,7 @@ def get_playlist(
             "description": playlist.description,
             "is_collaborative": playlist.is_collaborative,
             "is_public": playlist.is_public,
-            "owner_id": playlist.owner_id,
+            "creator_id": playlist.creator_id,
             "items": [
                 {
                     "id": item.id,
@@ -134,7 +134,7 @@ def add_to_playlist(
         raise HTTPException(status_code=404, detail="Playlist not found")
 
     # Check ownership or collaborator access
-    is_owner = playlist.owner_id == current_user.id
+    is_owner = playlist.creator_id == current_user.id
     is_collaborator = False
     if not is_owner and playlist.is_collaborative:
         collab = session.exec(
@@ -185,7 +185,7 @@ def remove_from_playlist(
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist not found")
 
-    if playlist.owner_id != current_user.id:
+    if playlist.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the playlist owner can remove items")
 
     item = session.exec(
@@ -218,7 +218,7 @@ def add_collaborator(
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist not found")
 
-    if playlist.owner_id != current_user.id:
+    if playlist.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the playlist owner can add collaborators")
 
     if not playlist.is_collaborative:

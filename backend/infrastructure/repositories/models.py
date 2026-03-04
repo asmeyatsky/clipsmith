@@ -927,6 +927,7 @@ class PollOptionDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     poll_id: str = Field(index=True)
     text: str
+    position: int = Field(default=0)
     vote_count: int = Field(default=0)
     is_correct: bool = Field(default=False)  # For quiz
 
@@ -950,6 +951,7 @@ class ChapterMarkerDB(SQLModel, table=True):
     start_time: float
     end_time: float
     thumbnail_url: Optional[str] = None
+    creator_id: str = Field(default="")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -997,6 +999,7 @@ class DirectMessageDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     sender_id: str = Field(index=True)
     receiver_id: str = Field(index=True)
+    conversation_id: Optional[str] = Field(default=None, index=True)
     content: str  # Encrypted content
     is_encrypted: bool = Field(default=True)
     read_at: Optional[datetime] = None
@@ -1162,6 +1165,7 @@ class GDPRRequestDB(SQLModel, table=True):
     user_id: str = Field(index=True)
     request_type: str = Field(index=True)  # data_export/deletion/consent_withdrawal/access/rectification/portability
     status: str = Field(default="pending", index=True)  # pending/processing/completed/failed
+    details: Optional[str] = Field(default=None)
     result_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
@@ -1261,3 +1265,40 @@ class PostingTimeRecommendationDB(SQLModel, table=True):
     engagement_score: float = Field(default=0.0)
     sample_size: int = Field(default=0)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Age Verification
+# ============================================================
+
+
+class AgeVerificationDB(SQLModel, table=True):
+    """Age verification records for compliance."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    date_of_birth: str
+    verification_method: str = Field(default="self_declared")
+    verified: bool = Field(default=False)
+    verified_age: Optional[int] = None
+    is_minor: bool = Field(default=False)
+    requires_parental_consent: bool = Field(default=False)
+    status: str = Field(default="pending", index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Lesson Progress
+# ============================================================
+
+
+class LessonProgressDB(SQLModel, table=True):
+    """Tracks individual lesson progress within a course enrollment."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    enrollment_id: str = Field(index=True)
+    lesson_id: str = Field(index=True)
+    user_id: Optional[str] = Field(default=None, index=True)
+    completed: bool = Field(default=False)
+    completed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)

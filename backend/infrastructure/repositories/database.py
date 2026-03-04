@@ -39,6 +39,7 @@ def create_db_and_tables():
         ConsentRecordDB, ColorGradingPresetDB, EffectLibraryDB,
         VideoSpeedSettingDB, TrafficSourceDB, RetentionDataDB,
         PostingTimeRecommendationDB,
+        AgeVerificationDB, LessonProgressDB,
     )
     SQLModel.metadata.create_all(engine)
     _seed_data()

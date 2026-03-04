@@ -130,7 +130,7 @@ def join_collaborative_video(
     session: Session = Depends(get_session),
 ):
     """Join a collaborative video project."""
-    from ...infrastructure.repositories.models import CollaborativeVideoDB, CollabParticipantDB
+    from ...infrastructure.repositories.models import CollaborativeVideoDB, VideoCollaboratorDB
 
     collab = session.get(CollaborativeVideoDB, collab_id)
     if not collab:
@@ -141,18 +141,18 @@ def join_collaborative_video(
 
     # Check existing participation
     existing = session.exec(
-        select(CollabParticipantDB).where(
-            CollabParticipantDB.collab_id == collab_id,
-            CollabParticipantDB.user_id == current_user.id,
+        select(VideoCollaboratorDB).where(
+            VideoCollaboratorDB.collaborative_video_id == collab_id,
+            VideoCollaboratorDB.user_id == current_user.id,
         )
     ).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="Already a participant")
 
-    participant = CollabParticipantDB(
+    participant = VideoCollaboratorDB(
         id=str(uuid.uuid4()),
-        collab_id=collab_id,
+        collaborative_video_id=collab_id,
         user_id=current_user.id,
     )
     session.add(participant)
@@ -184,7 +184,7 @@ def start_live_stream(
         id=str(uuid.uuid4()),
         title=title,
         description=description,
-        host_id=current_user.id,
+        creator_id=current_user.id,
         status="live" if not scheduled_for else "scheduled",
         scheduled_for=scheduled_for,
     )
@@ -197,7 +197,7 @@ def start_live_stream(
             "id": stream.id,
             "title": stream.title,
             "status": stream.status,
-            "host_id": stream.host_id,
+            "creator_id": stream.creator_id,
             "scheduled_for": stream.scheduled_for,
         },
     }
@@ -216,7 +216,7 @@ def end_live_stream(
     if not stream:
         raise HTTPException(status_code=404, detail="Live stream not found")
 
-    if stream.host_id != current_user.id:
+    if stream.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the host can end the stream")
 
     if stream.status == "ended":
@@ -288,7 +288,7 @@ def list_live_streams(
                 "id": s.id,
                 "title": s.title,
                 "description": s.description,
-                "host_id": s.host_id,
+                "creator_id": s.creator_id,
                 "status": s.status,
                 "scheduled_for": s.scheduled_for,
                 "created_at": s.created_at.isoformat() if s.created_at else None,

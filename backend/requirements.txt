@@ -64,3 +64,5 @@ prometheus-client==0.21.0
 psutil==6.1.0
 bleach==6.2.0
 qrcode[pil]==7.4.2
+stripe==10.12.0
+google-cloud-storage==2.18.2

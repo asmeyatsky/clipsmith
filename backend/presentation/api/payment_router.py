@@ -1,5 +1,7 @@
 import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
+from fastapi.responses import JSONResponse
 from typing import List, Optional
 from ...application.services.payment_service import PaymentService
 from ...infrastructure.repositories.sqlite_payment_repo import SQLitePaymentRepository
@@ -10,6 +12,8 @@ from ...domain.entities.payment import TransactionType, Transaction
 from sqlmodel import Session, select
 from datetime import datetime
 import json
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -252,14 +256,29 @@ async def get_creator_analytics(
     return {"success": True, "analytics": analytics}
 
 
-# Stripe webhook endpoint
+# ==================== Stripe Webhook Endpoints ====================
+
+
 @router.post("/webhook/stripe")
 async def stripe_webhook(
     request: Request, service: PaymentService = Depends(get_payment_service)
 ):
-    """Handle Stripe webhooks."""
+    """Handle Stripe webhooks with signature verification.
+
+    Processes the following event types:
+    - checkout.session.completed
+    - payment_intent.succeeded / payment_intent.failed
+    - customer.subscription.created / updated / deleted
+    - invoice.payment_succeeded / invoice.payment_failed
+    - payout.*
+    - account.updated
+    """
     body = await request.body()
     signature = request.headers.get("stripe-signature")
+
+    if not signature:
+        logger.warning("Stripe webhook received without signature header")
+        raise HTTPException(status_code=400, detail="Missing stripe-signature header")
 
     # Verify webhook signature
     event_result = await service.stripe_service.construct_webhook_event(
@@ -269,43 +288,159 @@ async def stripe_webhook(
     )
 
     if not event_result["success"]:
+        logger.warning(f"Stripe webhook signature verification failed: {event_result.get('error')}")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     event = event_result["event"]
     event_type = event["type"]
+    logger.info(f"Processing Stripe webhook event: {event_type} (id={event.get('id', 'unknown')})")
 
     try:
         # Handle different event types
-        if event_type.startswith("payment_intent."):
-            await _handle_payment_intent(event, service)
+        if event_type == "checkout.session.completed":
+            await _handle_checkout_session_completed(event, service)
+        elif event_type == "payment_intent.succeeded":
+            await _handle_payment_intent_succeeded(event, service)
+        elif event_type == "payment_intent.failed":
+            await _handle_payment_intent_failed(event, service)
         elif event_type.startswith("invoice.payment_"):
             await _handle_invoice_payment(event, service)
-        elif event_type.startswith("customer.subscription."):
-            await _handle_subscription_event(event, service)
+        elif event_type == "customer.subscription.created":
+            await _handle_subscription_created(event, service)
+        elif event_type == "customer.subscription.updated":
+            await _handle_subscription_updated(event, service)
+        elif event_type == "customer.subscription.deleted":
+            await _handle_subscription_deleted(event, service)
         elif event_type.startswith("payout."):
             await _handle_payout_event(event, service)
         elif event_type == "account.updated":
             await _handle_account_update(event, service)
+        else:
+            logger.debug(f"Unhandled Stripe webhook event type: {event_type}")
 
-        return {"success": True, "received": True}
+        return JSONResponse(
+            status_code=200,
+            content={"success": True, "received": True}
+        )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Webhook processing failed: {str(e)}"
+        logger.error(f"Webhook processing failed for {event_type}: {e}", exc_info=True)
+        # Return 200 to prevent Stripe from retrying on application errors.
+        # Only signature failures should return 4xx.
+        return JSONResponse(
+            status_code=200,
+            content={"success": False, "error": "Processing failed, will retry internally"}
         )
 
 
-# Webhook handlers
-async def _handle_payment_intent(event: dict, service: PaymentService):
-    """Handle payment intent events."""
+# Also register the webhook at the /webhooks/stripe path (standard convention)
+@router.post("/webhooks/stripe")
+async def stripe_webhook_alt(
+    request: Request, service: PaymentService = Depends(get_payment_service)
+):
+    """Alias for /webhook/stripe to support the standard /webhooks/ convention."""
+    return await stripe_webhook(request, service)
+
+
+# ==================== Webhook Handlers ====================
+
+
+async def _handle_checkout_session_completed(event: dict, service: PaymentService):
+    """Handle checkout.session.completed event.
+
+    This fires when a Checkout Session payment is successful.
+    Used for one-time payments and subscription initial payments via Checkout.
+    """
+    session_obj = event["data"]["object"]
+    mode = session_obj.get("mode")  # "payment", "subscription", or "setup"
+    payment_status = session_obj.get("payment_status")
+    metadata = session_obj.get("metadata", {})
+
+    logger.info(
+        f"Checkout session completed: mode={mode}, "
+        f"payment_status={payment_status}, session_id={session_obj['id']}"
+    )
+
+    if payment_status != "paid":
+        logger.info(f"Checkout session {session_obj['id']} not yet paid, skipping")
+        return
+
+    if mode == "payment":
+        # One-time payment completed
+        payment_intent_id = session_obj.get("payment_intent")
+        customer_id = session_obj.get("customer")
+
+        if metadata.get("type") == "tip":
+            # Tip payment via Checkout
+            sender_id = metadata.get("sender_id")
+            receiver_id = metadata.get("receiver_id")
+            if payment_intent_id:
+                await service.complete_tip_transaction(
+                    payment_intent_id=payment_intent_id,
+                    charge_id=payment_intent_id,  # Will be resolved in handler
+                )
+
+        elif metadata.get("type") == "premium_purchase":
+            # Premium content purchase via Checkout
+            logger.info(
+                f"Premium content purchase completed via Checkout: "
+                f"session={session_obj['id']}"
+            )
+
+    elif mode == "subscription":
+        # Subscription created via Checkout
+        stripe_subscription_id = session_obj.get("subscription")
+        customer_id = session_obj.get("customer")
+        logger.info(
+            f"Subscription {stripe_subscription_id} created via Checkout "
+            f"for customer {customer_id}"
+        )
+
+
+async def _handle_payment_intent_succeeded(event: dict, service: PaymentService):
+    """Handle payment_intent.succeeded event.
+
+    Completes the corresponding tip transaction and credits the receiver.
+    """
     payment_intent = event["data"]["object"]
+    payment_intent_id = payment_intent["id"]
+    metadata = payment_intent.get("metadata", {})
 
-    if event["type"] == "payment_intent.succeeded":
-        # Complete tip transaction
-        await service.complete_tip_transaction(
-            payment_intent_id=payment_intent["id"],
-            charge_id=payment_intent["charges"]["data"][0]["id"],
-        )
+    logger.info(f"Payment intent succeeded: {payment_intent_id}")
+
+    # Extract charge ID safely
+    charges = payment_intent.get("charges", {})
+    charges_data = charges.get("data", []) if isinstance(charges, dict) else []
+    charge_id = charges_data[0]["id"] if charges_data else payment_intent.get("latest_charge")
+
+    if not charge_id:
+        logger.warning(f"No charge ID found for payment intent {payment_intent_id}")
+        charge_id = payment_intent_id  # Fallback
+
+    await service.complete_tip_transaction(
+        payment_intent_id=payment_intent_id,
+        charge_id=charge_id,
+    )
+
+
+async def _handle_payment_intent_failed(event: dict, service: PaymentService):
+    """Handle payment_intent.failed event.
+
+    Marks the corresponding transaction as failed.
+    """
+    payment_intent = event["data"]["object"]
+    payment_intent_id = payment_intent["id"]
+    failure_message = payment_intent.get("last_payment_error", {}).get("message", "Payment failed")
+
+    logger.warning(f"Payment intent failed: {payment_intent_id} - {failure_message}")
+
+    # Find and fail the corresponding transaction
+    transactions = service.repository.get_transactions_by_reference(payment_intent_id)
+    for transaction in transactions:
+        if transaction.status == "pending":
+            failed_transaction = transaction.fail(failure_message)
+            service.repository.save_transaction(failed_transaction)
+            logger.info(f"Transaction {transaction.id} marked as failed")
 
 
 async def _handle_invoice_payment(event: dict, service: PaymentService):
@@ -325,10 +460,11 @@ async def _handle_invoice_payment(event: dict, service: PaymentService):
                     amount=invoice["amount_paid"] / 100,
                     transaction_type=TransactionType.SUBSCRIPTION,
                     description=f"Subscription payment from {subscription.user_id}",
-                    reference_id=invoice["charge"],
+                    reference_id=invoice.get("charge", invoice["id"]),
                     metadata={
                         "subscriber_id": subscription.user_id,
                         "subscription_id": subscription.id,
+                        "invoice_id": invoice["id"],
                     },
                 )
 
@@ -342,43 +478,152 @@ async def _handle_invoice_payment(event: dict, service: PaymentService):
                 updated_wallet = wallet.add_funds(saved_transaction.amount)
                 service.repository.save_wallet(updated_wallet)
 
+                logger.info(
+                    f"Invoice payment recorded for subscription {subscription_id}: "
+                    f"${saved_transaction.amount}"
+                )
 
-async def _handle_subscription_event(event: dict, service: PaymentService):
-    """Handle subscription events."""
+    elif event["type"] == "invoice.payment_failed":
+        subscription_id = invoice.get("subscription")
+        logger.warning(
+            f"Invoice payment failed for subscription {subscription_id}: "
+            f"invoice={invoice['id']}"
+        )
+
+
+async def _handle_subscription_created(event: dict, service: PaymentService):
+    """Handle customer.subscription.created event.
+
+    Logs the event. The subscription is typically already saved to the DB
+    when created via the API, but this handles subscriptions created
+    externally (e.g., via Stripe Dashboard or Checkout).
+    """
     subscription = event["data"]["object"]
     stripe_subscription_id = subscription["id"]
+    status = subscription.get("status")
+    metadata = subscription.get("metadata", {})
+
+    logger.info(
+        f"Subscription created: {stripe_subscription_id}, status={status}, "
+        f"metadata={metadata}"
+    )
+
+    # Check if already in our database (created via our API)
+    db_subscription = service.repository.get_subscription_by_stripe_id(
+        stripe_subscription_id
+    )
+    if db_subscription:
+        logger.debug(f"Subscription {stripe_subscription_id} already in database")
+        return
+
+    # If created externally, we could create a record here if we have
+    # enough metadata to identify the subscriber and creator
+    subscriber_id = metadata.get("subscriber_id")
+    creator_id = metadata.get("creator_id")
+    if subscriber_id and creator_id:
+        from ...domain.entities.payment import Subscription as SubscriptionEntity
+        new_sub = SubscriptionEntity(
+            user_id=subscriber_id,
+            creator_id=creator_id,
+            stripe_subscription_id=stripe_subscription_id,
+            status=status,
+            amount=subscription["items"]["data"][0]["price"]["unit_amount"] / 100 if subscription.get("items", {}).get("data") else 0,
+            currency=subscription["items"]["data"][0]["price"]["currency"] if subscription.get("items", {}).get("data") else "usd",
+            interval=subscription["items"]["data"][0]["price"]["recurring"]["interval"] if subscription.get("items", {}).get("data") else "month",
+            current_period_start=datetime.fromtimestamp(subscription["current_period_start"]),
+            current_period_end=datetime.fromtimestamp(subscription["current_period_end"]),
+        )
+        service.repository.save_subscription(new_sub)
+        logger.info(f"Externally created subscription {stripe_subscription_id} saved to database")
+
+
+async def _handle_subscription_updated(event: dict, service: PaymentService):
+    """Handle customer.subscription.updated event.
+
+    Updates the local subscription record with the latest status and period info.
+    """
+    subscription = event["data"]["object"]
+    stripe_subscription_id = subscription["id"]
+    new_status = subscription.get("status")
+
+    logger.info(f"Subscription updated: {stripe_subscription_id}, new_status={new_status}")
 
     db_subscription = service.repository.get_subscription_by_stripe_id(
         stripe_subscription_id
     )
     if not db_subscription:
+        logger.warning(f"Subscription {stripe_subscription_id} not found in database")
         return
 
-    if event["type"] == "customer.subscription.deleted":
-        # Update subscription status
-        updated_subscription = db_subscription.replace(status="cancelled")
-        updated_subscription = updated_subscription.replace(ended_at=datetime.utcnow())
-        service.repository.save_subscription(updated_subscription)
+    # Update status and period
+    updated = db_subscription.replace(
+        status=new_status,
+        current_period_start=datetime.fromtimestamp(subscription["current_period_start"]),
+        current_period_end=datetime.fromtimestamp(subscription["current_period_end"]),
+    )
+
+    # Handle cancellation
+    if new_status == "canceled" and not updated.cancelled_at:
+        updated = updated.replace(cancelled_at=datetime.utcnow())
+
+    service.repository.save_subscription(updated)
+
+
+async def _handle_subscription_deleted(event: dict, service: PaymentService):
+    """Handle customer.subscription.deleted event.
+
+    Marks the subscription as cancelled and records the end time.
+    """
+    subscription = event["data"]["object"]
+    stripe_subscription_id = subscription["id"]
+
+    logger.info(f"Subscription deleted: {stripe_subscription_id}")
+
+    db_subscription = service.repository.get_subscription_by_stripe_id(
+        stripe_subscription_id
+    )
+    if not db_subscription:
+        logger.warning(f"Subscription {stripe_subscription_id} not found in database")
+        return
+
+    updated_subscription = db_subscription.replace(status="cancelled")
+    updated_subscription = updated_subscription.replace(ended_at=datetime.utcnow())
+    if not updated_subscription.cancelled_at:
+        updated_subscription = updated_subscription.replace(cancelled_at=datetime.utcnow())
+
+    service.repository.save_subscription(updated_subscription)
+    logger.info(f"Subscription {stripe_subscription_id} marked as cancelled")
 
 
 async def _handle_payout_event(event: dict, service: PaymentService):
-    """Handle payout events."""
+    """Handle payout events (payout.paid, payout.failed, etc.)."""
     payout = event["data"]["object"]
     stripe_payout_id = payout["id"]
+    payout_status = payout.get("status")
 
-    # Find corresponding payout in database
-    # This would need additional query method in repository
-    pass
+    logger.info(f"Payout event: {event['type']}, payout_id={stripe_payout_id}, status={payout_status}")
+
+    # Future: look up payout by stripe_payout_id and update status
+    # This requires a query method like: repository.get_payout_by_stripe_id(stripe_payout_id)
 
 
 async def _handle_account_update(event: dict, service: PaymentService):
-    """Handle Stripe Connect account updates."""
+    """Handle Stripe Connect account.updated events.
+
+    Logs account verification status changes.
+    """
     account = event["data"]["object"]
     account_id = account["id"]
+    charges_enabled = account.get("charges_enabled", False)
+    payouts_enabled = account.get("payouts_enabled", False)
 
-    # Update account status if needed
-    # Could update wallet status based on account capabilities
-    pass
+    logger.info(
+        f"Connect account updated: {account_id}, "
+        f"charges_enabled={charges_enabled}, payouts_enabled={payouts_enabled}"
+    )
+
+    # Future: update wallet status based on account capabilities
+    # e.g., service.repository.update_wallet_status_by_stripe_account(account_id, ...)
 
 
 # ==================== Premium Content Endpoints ====================

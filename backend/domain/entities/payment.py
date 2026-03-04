@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Optional, Dict, Any
 from enum import Enum
@@ -56,7 +56,7 @@ class Transaction:
 
     def complete(self) -> "Transaction":
         """Mark transaction as completed."""
-        return self.replace(
+        return replace(self,
             status=TransactionStatus.COMPLETED,
             updated_at=datetime.utcnow(),
             completed_at=datetime.utcnow(),
@@ -64,13 +64,13 @@ class Transaction:
 
     def fail(self) -> "Transaction":
         """Mark transaction as failed."""
-        return self.replace(
+        return replace(self,
             status=TransactionStatus.FAILED, updated_at=datetime.utcnow()
         )
 
     def refund(self) -> "Transaction":
         """Mark transaction as refunded."""
-        return self.replace(
+        return replace(self,
             status=TransactionStatus.REFUNDED, updated_at=datetime.utcnow()
         )
 
@@ -94,7 +94,7 @@ class CreatorWallet:
 
     def add_funds(self, amount: float) -> "CreatorWallet":
         """Add funds to wallet (pending clearance)."""
-        return self.replace(
+        return replace(self,
             pending_balance=self.pending_balance + amount,
             total_earned=self.total_earned + amount,
             updated_at=datetime.utcnow(),
@@ -102,7 +102,7 @@ class CreatorWallet:
 
     def clear_funds(self, amount: float) -> "CreatorWallet":
         """Clear pending funds to available balance."""
-        return self.replace(
+        return replace(self,
             balance=self.balance + amount,
             pending_balance=self.pending_balance - amount,
             updated_at=datetime.utcnow(),
@@ -110,7 +110,7 @@ class CreatorWallet:
 
     def withdraw_funds(self, amount: float) -> "CreatorWallet":
         """Withdraw funds from wallet."""
-        return self.replace(
+        return replace(self,
             balance=self.balance - amount,
             total_withdrawn=self.total_withdrawn + amount,
             updated_at=datetime.utcnow(),
@@ -119,11 +119,11 @@ class CreatorWallet:
 
     def freeze(self) -> "CreatorWallet":
         """Freeze wallet."""
-        return self.replace(status=WalletStatus.FROZEN, updated_at=datetime.utcnow())
+        return replace(self,status=WalletStatus.FROZEN, updated_at=datetime.utcnow())
 
     def activate(self) -> "CreatorWallet":
         """Activate wallet."""
-        return self.replace(status=WalletStatus.ACTIVE, updated_at=datetime.utcnow())
+        return replace(self,status=WalletStatus.ACTIVE, updated_at=datetime.utcnow())
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -147,13 +147,13 @@ class Payout:
 
     def process(self) -> "Payout":
         """Mark payout as processing."""
-        return self.replace(
+        return replace(self,
             status=PayoutStatus.PROCESSING, updated_at=datetime.utcnow()
         )
 
     def complete(self, stripe_payout_id: str) -> "Payout":
         """Mark payout as completed."""
-        return self.replace(
+        return replace(self,
             status=PayoutStatus.COMPLETED,
             stripe_payout_id=stripe_payout_id,
             updated_at=datetime.utcnow(),
@@ -162,7 +162,7 @@ class Payout:
 
     def fail(self, reason: str) -> "Payout":
         """Mark payout as failed."""
-        return self.replace(
+        return replace(self,
             status=PayoutStatus.FAILED,
             failed_reason=reason,
             updated_at=datetime.utcnow(),
@@ -188,7 +188,7 @@ class Subscription:
 
     def cancel(self) -> "Subscription":
         """Cancel subscription."""
-        return self.replace(
+        return replace(self,
             status="cancelled",
             cancelled_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
@@ -196,7 +196,7 @@ class Subscription:
 
     def renew(self, new_period_end: datetime) -> "Subscription":
         """Renew subscription."""
-        return self.replace(
+        return replace(self,
             current_period_start=datetime.utcnow(),
             current_period_end=new_period_end,
             updated_at=datetime.utcnow(),

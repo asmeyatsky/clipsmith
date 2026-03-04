@@ -19,7 +19,7 @@ def submit_gdpr_request(
     session: Session = Depends(get_session),
 ):
     """Submit a GDPR data request (export, deletion, etc.)."""
-    from ...infrastructure.repositories.models import GdprRequestDB
+    from ...infrastructure.repositories.models import GDPRRequestDB
 
     request_type = request_body.get("request_type")
     if not request_type:
@@ -32,7 +32,7 @@ def submit_gdpr_request(
             detail=f"Invalid request_type. Must be one of: {', '.join(valid_types)}",
         )
 
-    gdpr_request = GdprRequestDB(
+    gdpr_request = GDPRRequestDB(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
         request_type=request_type,
@@ -59,9 +59,9 @@ def get_gdpr_request_status(
     session: Session = Depends(get_session),
 ):
     """Get the status of a GDPR request."""
-    from ...infrastructure.repositories.models import GdprRequestDB
+    from ...infrastructure.repositories.models import GDPRRequestDB
 
-    gdpr_request = session.get(GdprRequestDB, request_id)
+    gdpr_request = session.get(GDPRRequestDB, request_id)
     if not gdpr_request:
         raise HTTPException(status_code=404, detail="GDPR request not found")
 
@@ -86,14 +86,14 @@ def export_user_data(
     session: Session = Depends(get_session),
 ):
     """Request a full export of user data (GDPR Article 20)."""
-    from ...infrastructure.repositories.models import GdprRequestDB
+    from ...infrastructure.repositories.models import GDPRRequestDB
 
     # Check for existing pending export request
     existing = session.exec(
-        select(GdprRequestDB).where(
-            GdprRequestDB.user_id == current_user.id,
-            GdprRequestDB.request_type == "export",
-            GdprRequestDB.status == "pending",
+        select(GDPRRequestDB).where(
+            GDPRRequestDB.user_id == current_user.id,
+            GDPRRequestDB.request_type == "export",
+            GDPRRequestDB.status == "pending",
         )
     ).first()
 
@@ -102,7 +102,7 @@ def export_user_data(
             status_code=400, detail="You already have a pending export request"
         )
 
-    export_request = GdprRequestDB(
+    export_request = GDPRRequestDB(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
         request_type="export",
@@ -125,7 +125,7 @@ def delete_user_data(
     session: Session = Depends(get_session),
 ):
     """Request deletion of specific user data categories (GDPR Article 17)."""
-    from ...infrastructure.repositories.models import GdprRequestDB
+    from ...infrastructure.repositories.models import GDPRRequestDB
 
     categories = request_body.get("categories", [])
     if not categories:
@@ -142,7 +142,7 @@ def delete_user_data(
                 detail=f"Invalid category: {cat}. Must be one of: {', '.join(valid_categories)}",
             )
 
-    delete_request = GdprRequestDB(
+    delete_request = GDPRRequestDB(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
         request_type="deletion",
@@ -169,7 +169,7 @@ def record_consent(
     session: Session = Depends(get_session),
 ):
     """Record user consent for a specific purpose."""
-    from ...infrastructure.repositories.models import UserConsentDB
+    from ...infrastructure.repositories.models import ConsentRecordDB
 
     consent_type = request_body.get("consent_type")
     granted = request_body.get("granted")
@@ -188,9 +188,9 @@ def record_consent(
 
     # Update existing or create new
     existing = session.exec(
-        select(UserConsentDB).where(
-            UserConsentDB.user_id == current_user.id,
-            UserConsentDB.consent_type == consent_type,
+        select(ConsentRecordDB).where(
+            ConsentRecordDB.user_id == current_user.id,
+            ConsentRecordDB.consent_type == consent_type,
         )
     ).first()
 
@@ -199,7 +199,7 @@ def record_consent(
         existing.updated_at = datetime.utcnow()
         session.add(existing)
     else:
-        consent = UserConsentDB(
+        consent = ConsentRecordDB(
             id=str(uuid.uuid4()),
             user_id=current_user.id,
             consent_type=consent_type,
@@ -218,10 +218,10 @@ def get_user_consents(
     session: Session = Depends(get_session),
 ):
     """Get all consent records for the current user."""
-    from ...infrastructure.repositories.models import UserConsentDB
+    from ...infrastructure.repositories.models import ConsentRecordDB
 
     consents = session.exec(
-        select(UserConsentDB).where(UserConsentDB.user_id == current_user.id)
+        select(ConsentRecordDB).where(ConsentRecordDB.user_id == current_user.id)
     ).all()
 
     return {
@@ -245,16 +245,16 @@ def withdraw_consent(
     session: Session = Depends(get_session),
 ):
     """Withdraw a previously granted consent."""
-    from ...infrastructure.repositories.models import UserConsentDB
+    from ...infrastructure.repositories.models import ConsentRecordDB
 
     consent_type = request_body.get("consent_type")
     if not consent_type:
         raise HTTPException(status_code=400, detail="consent_type is required")
 
     consent = session.exec(
-        select(UserConsentDB).where(
-            UserConsentDB.user_id == current_user.id,
-            UserConsentDB.consent_type == consent_type,
+        select(ConsentRecordDB).where(
+            ConsentRecordDB.user_id == current_user.id,
+            ConsentRecordDB.consent_type == consent_type,
         )
     ).first()
 
@@ -356,13 +356,13 @@ def opt_out_data_sale(
     session: Session = Depends(get_session),
 ):
     """Opt out of the sale of personal data (CCPA)."""
-    from ...infrastructure.repositories.models import UserConsentDB
+    from ...infrastructure.repositories.models import ConsentRecordDB
 
     # Record opt-out as a consent withdrawal for third_party data sharing
     existing = session.exec(
-        select(UserConsentDB).where(
-            UserConsentDB.user_id == current_user.id,
-            UserConsentDB.consent_type == "third_party",
+        select(ConsentRecordDB).where(
+            ConsentRecordDB.user_id == current_user.id,
+            ConsentRecordDB.consent_type == "third_party",
         )
     ).first()
 
@@ -371,7 +371,7 @@ def opt_out_data_sale(
         existing.updated_at = datetime.utcnow()
         session.add(existing)
     else:
-        consent = UserConsentDB(
+        consent = ConsentRecordDB(
             id=str(uuid.uuid4()),
             user_id=current_user.id,
             consent_type="third_party",

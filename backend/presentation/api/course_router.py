@@ -113,8 +113,8 @@ def get_enrolled_courses(
                 "description": course.description,
                 "price": course.price,
                 "category": course.category,
-                "enrolled_at": enrollment.created_at.isoformat() if enrollment.created_at else None,
-                "progress": enrollment.progress,
+                "enrolled_at": enrollment.enrolled_at.isoformat() if enrollment.enrolled_at else None,
+                "progress": enrollment.progress_percentage,
             })
 
     return {"success": True, "courses": courses}
@@ -267,7 +267,7 @@ def enroll_in_course(
         id=str(uuid.uuid4()),
         course_id=course_id,
         user_id=current_user.id,
-        progress=0.0,
+        progress_percentage=0.0,
     )
     session.add(enrollment)
     session.commit()
@@ -412,12 +412,12 @@ def apply_for_creator_fund(
     session: Session = Depends(get_session),
 ):
     """Apply for the creator fund."""
-    from ...infrastructure.repositories.models import CreatorFundApplicationDB
+    from ...infrastructure.repositories.models import CreatorFundEligibilityDB
 
     existing = session.exec(
-        select(CreatorFundApplicationDB).where(
-            CreatorFundApplicationDB.user_id == current_user.id,
-            CreatorFundApplicationDB.status != "rejected",
+        select(CreatorFundEligibilityDB).where(
+            CreatorFundEligibilityDB.user_id == current_user.id,
+            CreatorFundEligibilityDB.status != "rejected",
         )
     ).first()
 
@@ -427,7 +427,7 @@ def apply_for_creator_fund(
             detail="You already have an active or pending creator fund application",
         )
 
-    application = CreatorFundApplicationDB(
+    application = CreatorFundEligibilityDB(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
         status="pending",
@@ -440,7 +440,7 @@ def apply_for_creator_fund(
         "application": {
             "id": application.id,
             "status": application.status,
-            "applied_at": application.created_at.isoformat() if application.created_at else None,
+            "applied_at": application.applied_at.isoformat() if application.applied_at else None,
         },
     }
 
@@ -451,11 +451,11 @@ def get_creator_fund_status(
     session: Session = Depends(get_session),
 ):
     """Get creator fund application status."""
-    from ...infrastructure.repositories.models import CreatorFundApplicationDB
+    from ...infrastructure.repositories.models import CreatorFundEligibilityDB
 
     application = session.exec(
-        select(CreatorFundApplicationDB).where(
-            CreatorFundApplicationDB.user_id == current_user.id
+        select(CreatorFundEligibilityDB).where(
+            CreatorFundEligibilityDB.user_id == current_user.id
         )
     ).first()
 
@@ -466,5 +466,5 @@ def get_creator_fund_status(
         "success": True,
         "has_application": True,
         "status": application.status,
-        "applied_at": application.created_at.isoformat() if application.created_at else None,
+        "applied_at": application.applied_at.isoformat() if application.applied_at else None,
     }

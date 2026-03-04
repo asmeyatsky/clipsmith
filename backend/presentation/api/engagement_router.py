@@ -500,7 +500,7 @@ def join_challenge(
     session: Session = Depends(get_session),
 ):
     """Join a challenge with a video submission."""
-    from ...infrastructure.repositories.models import ChallengeDB, ChallengeEntryDB
+    from ...infrastructure.repositories.models import ChallengeDB, ChallengeParticipantDB
 
     challenge = session.get(ChallengeDB, challenge_id)
     if not challenge:
@@ -514,16 +514,16 @@ def join_challenge(
         raise HTTPException(status_code=400, detail="video_id is required")
 
     existing = session.exec(
-        select(ChallengeEntryDB).where(
-            ChallengeEntryDB.challenge_id == challenge_id,
-            ChallengeEntryDB.user_id == current_user.id,
+        select(ChallengeParticipantDB).where(
+            ChallengeParticipantDB.challenge_id == challenge_id,
+            ChallengeParticipantDB.user_id == current_user.id,
         )
     ).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="Already joined this challenge")
 
-    entry = ChallengeEntryDB(
+    entry = ChallengeParticipantDB(
         id=str(uuid.uuid4()),
         challenge_id=challenge_id,
         user_id=current_user.id,
@@ -575,22 +575,24 @@ def get_user_badges(
     session: Session = Depends(get_session),
 ):
     """Get badges earned by a user."""
-    from ...infrastructure.repositories.models import UserBadgeDB
+    from ...infrastructure.repositories.models import UserBadgeDB, BadgeDB
 
-    badges = session.exec(
+    user_badges = session.exec(
         select(UserBadgeDB).where(UserBadgeDB.user_id == user_id)
     ).all()
 
+    badges = []
+    for ub in user_badges:
+        badge = session.get(BadgeDB, ub.badge_id)
+        badges.append({
+            "id": ub.id,
+            "badge_type": badge.badge_type if badge else None,
+            "badge_name": badge.name if badge else None,
+            "description": badge.description if badge else None,
+            "earned_at": ub.earned_at.isoformat() if ub.earned_at else None,
+        })
+
     return {
         "success": True,
-        "badges": [
-            {
-                "id": b.id,
-                "badge_type": b.badge_type,
-                "badge_name": b.badge_name,
-                "description": b.description,
-                "earned_at": b.earned_at.isoformat() if b.earned_at else None,
-            }
-            for b in badges
-        ],
+        "badges": badges,
     }
