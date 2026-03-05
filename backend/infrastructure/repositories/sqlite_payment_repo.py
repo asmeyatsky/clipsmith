@@ -55,20 +55,29 @@ class SQLitePaymentRepository(PaymentRepositoryPort):
 
     # Transaction operations
     def save_transaction(self, transaction: Transaction) -> Transaction:
-        transaction_db = TransactionDB.model_validate(transaction)
-        # Convert metadata dict to JSON string if needed
-        if transaction.metadata:
-            transaction_db.metadata = json.dumps(transaction.metadata)
+        from dataclasses import asdict
+        data = asdict(transaction)
+        # Map domain 'metadata' to DB 'extra_metadata'
+        data['extra_metadata'] = json.dumps(data.pop('metadata')) if data.get('metadata') else None
+        transaction_db = TransactionDB(**data)
 
         transaction_db = self.session.merge(transaction_db)
         self.session.commit()
         self.session.refresh(transaction_db)
-        return Transaction(**transaction_db.model_dump())
+        return self._to_domain(transaction_db)
+
+    @staticmethod
+    def _to_domain(transaction_db: TransactionDB) -> Transaction:
+        """Convert DB model to domain entity, mapping extra_metadata -> metadata."""
+        data = transaction_db.model_dump()
+        extra_meta = data.pop('extra_metadata', None)
+        data['metadata'] = json.loads(extra_meta) if extra_meta else None
+        return Transaction(**data)
 
     def get_transaction_by_id(self, transaction_id: str) -> Optional[Transaction]:
         transaction_db = self.session.get(TransactionDB, transaction_id)
         if transaction_db:
-            return Transaction(**transaction_db.model_dump())
+            return self._to_domain(transaction_db)
         return None
 
     def get_user_transactions(
@@ -91,14 +100,14 @@ class SQLitePaymentRepository(PaymentRepositoryPort):
         query = query.order_by(TransactionDB.created_at.desc()).limit(limit)
 
         results = self.session.exec(query).all()
-        return [Transaction(**transaction.model_dump()) for transaction in results]
+        return [self._to_domain(transaction) for transaction in results]
 
     def get_transactions_by_reference(self, reference_id: str) -> List[Transaction]:
         query = select(TransactionDB).where(TransactionDB.reference_id == reference_id)
         query = query.order_by(TransactionDB.created_at.desc())
 
         results = self.session.exec(query).all()
-        return [Transaction(**transaction.model_dump()) for transaction in results]
+        return [self._to_domain(transaction) for transaction in results]
 
     # Payout operations
     def save_payout(self, payout: Payout) -> Payout:

@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+from dataclasses import replace
 from ...domain.entities.analytics import (
     VideoAnalytics,
     CreatorAnalytics,
@@ -147,7 +148,7 @@ class AnalyticsService:
                     performance.subscription_conversions + 1
                 )
 
-            updated_performance = performance.replace(**update_data)
+            updated_performance = replace(performance, **update_data)
             self.repository.save_content_performance(updated_performance)
         else:
             # Create new content performance record
@@ -243,7 +244,7 @@ class AnalyticsService:
 
         if existing_analytics:
             # Update existing
-            creator_analytics = creator_analytics.replace(id=existing_analytics.id)
+            creator_analytics = replace(creator_analytics, id=existing_analytics.id)
 
         saved_analytics = self.repository.save_creator_analytics(creator_analytics)
 

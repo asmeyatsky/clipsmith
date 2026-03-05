@@ -99,18 +99,23 @@ class SQLiteAnalyticsRepository(AnalyticsRepositoryPort):
 
     # Creator Analytics
     def save_creator_analytics(self, analytics: CreatorAnalytics) -> CreatorAnalytics:
-        analytics_db = CreatorAnalyticsDB.model_validate(analytics)
-
-        # Convert list to JSON string if needed
-        if analytics.top_performing_videos:
-            analytics_db.top_performing_videos = json.dumps(
-                analytics.top_performing_videos
-            )
+        from dataclasses import asdict
+        data = asdict(analytics)
+        # Convert list to JSON string for DB storage
+        if isinstance(data.get('top_performing_videos'), list):
+            data['top_performing_videos'] = json.dumps(data['top_performing_videos']) if data['top_performing_videos'] else None
+        analytics_db = CreatorAnalyticsDB(**data)
 
         analytics_db = self.session.merge(analytics_db)
         self.session.commit()
         self.session.refresh(analytics_db)
-        return CreatorAnalytics(**analytics_db.model_dump())
+
+        result_data = analytics_db.model_dump()
+        if analytics_db.top_performing_videos:
+            result_data['top_performing_videos'] = json.loads(analytics_db.top_performing_videos)
+        else:
+            result_data['top_performing_videos'] = []
+        return CreatorAnalytics(**result_data)
 
     def get_creator_analytics(
         self,
@@ -165,16 +170,23 @@ class SQLiteAnalyticsRepository(AnalyticsRepositoryPort):
 
     # Time Series Data
     def save_time_series_data(self, data: TimeSeriesData) -> TimeSeriesData:
-        data_db = TimeSeriesDataDB.model_validate(data)
-
-        # Convert list to JSON string
-        if data.data_points:
-            data_db.data_points = json.dumps(data.data_points)
+        from dataclasses import asdict
+        data_dict = asdict(data)
+        # Convert list to JSON string for DB storage
+        if isinstance(data_dict.get('data_points'), list):
+            data_dict['data_points'] = json.dumps(data_dict['data_points']) if data_dict['data_points'] else None
+        data_db = TimeSeriesDataDB(**data_dict)
 
         data_db = self.session.merge(data_db)
         self.session.commit()
         self.session.refresh(data_db)
-        return TimeSeriesData(**data_db.model_dump())
+
+        result_data = data_db.model_dump()
+        if data_db.data_points:
+            result_data['data_points'] = json.loads(data_db.data_points)
+        else:
+            result_data['data_points'] = []
+        return TimeSeriesData(**result_data)
 
     def get_time_series_data(
         self,

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from enum import Enum
@@ -98,7 +98,7 @@ class VideoAnalytics:
             else:
                 updated_data["engagement_rate"] = 0.0
 
-        return self.replace(**updated_data)
+        return replace(self, **updated_data)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -176,7 +176,7 @@ class TimeSeriesData:
         if metadata:
             data_point["metadata"] = metadata
 
-        return self.replace(data_points=self.data_points + [data_point])
+        return replace(self, data_points=self.data_points + [data_point])
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -41,13 +41,12 @@ jobs:
         pip install pytest pytest-asyncio
 
     - name: Run backend tests
-      working-directory: ./backend
       env:
         REDIS_HOST: localhost
         REDIS_PORT: 6379
         JWT_SECRET_KEY: ci-test-secret-key-not-for-production
         DATABASE_URL: sqlite:///test.db
-      run: pytest -v --tb=short
+      run: python -m pytest backend/tests -v --tb=short
 
     - name: Security dependency audit
       working-directory: ./backend

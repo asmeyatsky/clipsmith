@@ -136,6 +136,9 @@ class UserActivityMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
         # Extract user from JWT token if available
         request = Request(scope, receive)
 

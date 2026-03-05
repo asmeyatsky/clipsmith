@@ -63,6 +63,7 @@ class UploadVideoUseCase:
             id=saved_video.id,
             title=saved_video.title,
             description=saved_video.description,
+            creator_id=saved_video.creator_id,
             status=saved_video.status,
             url=None,  # URL is not available yet
             thumbnail_url=None,  # Thumbnail URL is not available yet
