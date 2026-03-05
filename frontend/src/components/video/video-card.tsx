@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { interactionService } from '@/lib/api/interactions';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { CommentsSection } from './comments-section';
@@ -16,7 +17,7 @@ interface VideoProps extends VideoResponseDTO {
     discoveryReasons?: string[];
 }
 
-export function VideoCard(video: VideoProps) {
+export function VideoCard({ video }: { video: VideoProps }) {
     const router = useRouter();
     const { user } = useAuthStore();
     const [isLiked, setIsLiked] = useState(false);
@@ -25,6 +26,7 @@ export function VideoCard(video: VideoProps) {
     const [showComments, setShowComments] = useState(false);
     const [showTipModal, setShowTipModal] = useState(false);
     const [showDiscoveryReasons, setShowDiscoveryReasons] = useState(false);
+    const [showOverlay, setShowOverlay] = useState(false);
 
     const handleLike = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -58,7 +60,10 @@ export function VideoCard(video: VideoProps) {
                 <Card className="overflow-hidden border-none bg-zinc-900/50 backdrop-blur-sm shadow-2xl transition-all duration-500 hover:ring-2 hover:ring-blue-500/50">
                     <CardContent className="p-0">
                         {/* Video Player Area */}
-                        <div className="relative aspect-[9/16] overflow-hidden bg-black cursor-pointer sm:aspect-video">
+                        <div
+                            className="relative aspect-[9/16] overflow-hidden bg-black cursor-pointer sm:aspect-video"
+                            onClick={() => setShowOverlay(prev => !prev)}
+                        >
                             {video.status === 'READY' && video.url ? (
                                 <video
                                     src={video.url}
@@ -66,12 +71,18 @@ export function VideoCard(video: VideoProps) {
                                     muted
                                     playsInline
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                    poster={video.thumbnail_url || "/placeholder.png"} // Use thumbnail or generic placeholder
+                                    poster={video.thumbnail_url || "/placeholder.png"}
                                     onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
                                     onMouseLeave={(e) => {
                                         const v = e.target as HTMLVideoElement;
                                         v.pause();
                                         v.currentTime = 0;
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const v = e.target as HTMLVideoElement;
+                                        if (v.paused) v.play();
+                                        else v.pause();
                                     }}
                                 />
                             ) : (
@@ -90,7 +101,7 @@ export function VideoCard(video: VideoProps) {
                                         </>
                                     )}
                                     {video.thumbnail_url && (
-                                        <img src={video.thumbnail_url} alt="Video thumbnail" className="absolute inset-0 w-full h-full object-cover opacity-20 -z-10" />
+                                        <Image src={video.thumbnail_url} alt="Video thumbnail" fill className="object-cover opacity-20 -z-10" />
                                     )}
                                 </div>
                             )}
@@ -98,7 +109,7 @@ export function VideoCard(video: VideoProps) {
                             {/* Overlay Controls (Visual Only) */}
                             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors pointer-events-none" />
 
-                            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-col gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0 duration-300">
+                            <div className={`absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-col gap-1 sm:gap-2 transition-opacity duration-300 ${showOverlay ? 'opacity-100 translate-x-0' : 'opacity-100 translate-x-0 md:opacity-0 md:translate-x-4'} md:group-hover:opacity-100 md:group-hover:translate-x-0`}>
                                 {user && user.id === video.creator_id && (
                                     <Button
                                         variant="secondary"

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { LogOut, User, Video, Search, Moon, Sun, X, Sparkles, DollarSign, Layout, Compass, Users, MessageSquare, GraduationCap } from 'lucide-react';
+import { LogOut, User, Video, Search, Moon, Sun, X, DollarSign, Layout, Compass, Users, MessageSquare, GraduationCap, Menu } from 'lucide-react';
 import { UploadModal } from '@/components/video/upload-modal';
 
 export function Navbar() {
@@ -15,11 +15,13 @@ export function Navbar() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [isDark, setIsDark] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsDark(isDarkMode);
         document.documentElement.classList.toggle('dark', isDarkMode);
     }, []);
@@ -82,58 +84,70 @@ export function Navbar() {
                     </Button>
 
                     {user ? (
-                        <div className="flex items-center gap-2">
-                            <Link href="/discover">
-                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
-                                    <Compass className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Discover</span>
+                        <>
+                            {/* Desktop nav links */}
+                            <div className="hidden md:flex items-center gap-2">
+                                <Link href="/discover">
+                                    <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                        <Compass className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Discover</span>
+                                    </Button>
+                                </Link>
+                                <Link href="/templates">
+                                    <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                        <Layout className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Templates</span>
+                                    </Button>
+                                </Link>
+                                <Link href="/monetization">
+                                    <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                        <DollarSign className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Earn</span>
+                                    </Button>
+                                </Link>
+                                <Link href="/community">
+                                    <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                        <Users className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Community</span>
+                                    </Button>
+                                </Link>
+                                <Link href="/messages">
+                                    <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                        <MessageSquare className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Messages</span>
+                                    </Button>
+                                </Link>
+                                <Link href="/courses">
+                                    <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                        <GraduationCap className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Courses</span>
+                                    </Button>
+                                </Link>
+                                <UploadModal onUploadSuccess={() => window.location.reload()} />
+                                <Link href={`/profile/${user.username}`}>
+                                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900">
+                                        <User className="w-5 h-5" />
+                                    </Button>
+                                </Link>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={logout}
+                                    className="rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                >
+                                    <LogOut className="w-5 h-5" />
                                 </Button>
-                            </Link>
-                            <Link href="/templates">
-                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
-                                    <Layout className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Templates</span>
-                                </Button>
-                            </Link>
-                            <Link href="/monetization">
-                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
-                                    <DollarSign className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Earn</span>
-                                </Button>
-                            </Link>
-                            <Link href="/community">
-                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
-                                    <Users className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Community</span>
-                                </Button>
-                            </Link>
-                            <Link href="/messages">
-                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
-                                    <MessageSquare className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Messages</span>
-                                </Button>
-                            </Link>
-                            <Link href="/courses">
-                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
-                                    <GraduationCap className="w-4 h-4" />
-                                    <span className="hidden sm:inline">Courses</span>
-                                </Button>
-                            </Link>
-                            <UploadModal onUploadSuccess={() => window.location.reload()} />
-                            <Link href={`/profile/${user.username}`}>
-                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900">
-                                    <User className="w-5 h-5" />
-                                </Button>
-                            </Link>
+                            </div>
+                            {/* Mobile hamburger button */}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={logout}
-                                className="rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                className="md:hidden rounded-full"
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             >
-                                <LogOut className="w-5 h-5" />
+                                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                             </Button>
-                        </div>
+                        </>
                     ) : (
                         <div className="flex items-center gap-2">
                             <Link href="/login">
@@ -148,6 +162,55 @@ export function Navbar() {
                     )}
                 </div>
             </div>
+
+            {/* Mobile Menu */}
+            {mobileMenuOpen && user && (
+                <div className="md:hidden mt-2 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border border-white/20 dark:border-zinc-800/50 rounded-2xl px-4 py-4 shadow-2xl flex flex-col gap-1 pb-[env(safe-area-inset-bottom)]">
+                    <Link href="/discover" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <Compass className="w-5 h-5" /> Discover
+                        </Button>
+                    </Link>
+                    <Link href="/templates" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <Layout className="w-5 h-5" /> Templates
+                        </Button>
+                    </Link>
+                    <Link href="/monetization" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <DollarSign className="w-5 h-5" /> Earn
+                        </Button>
+                    </Link>
+                    <Link href="/community" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <Users className="w-5 h-5" /> Community
+                        </Button>
+                    </Link>
+                    <Link href="/messages" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <MessageSquare className="w-5 h-5" /> Messages
+                        </Button>
+                    </Link>
+                    <Link href="/courses" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <GraduationCap className="w-5 h-5" /> Courses
+                        </Button>
+                    </Link>
+                    <Link href={`/profile/${user.username}`} onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
+                            <User className="w-5 h-5" /> Profile
+                        </Button>
+                    </Link>
+                    <div className="border-t border-zinc-200 dark:border-zinc-800 my-1" />
+                    <Button
+                        variant="ghost"
+                        onClick={() => { logout(); setMobileMenuOpen(false); }}
+                        className="w-full justify-start gap-3 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    >
+                        <LogOut className="w-5 h-5" /> Log Out
+                    </Button>
+                </div>
+            )}
         </motion.nav>
     );
 }

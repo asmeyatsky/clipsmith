@@ -37,6 +37,32 @@ export function Timeline({ duration, playhead, onPlayheadChange }: TimelineProps
         document.addEventListener('mouseup', handleMouseUp);
     };
 
+    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+        if (!timelineRef.current) return;
+        const rect = timelineRef.current.getBoundingClientRect();
+        const x = e.touches[0].clientX - rect.left;
+        const newPlayhead = (x / rect.width) * duration;
+        onPlayheadChange(newPlayhead);
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!timelineRef.current) return;
+            const rect = timelineRef.current.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            let newPlayhead = (x / rect.width) * duration;
+            if (newPlayhead < 0) newPlayhead = 0;
+            if (newPlayhead > duration) newPlayhead = duration;
+            onPlayheadChange(newPlayhead);
+        };
+
+        const handleTouchEnd = () => {
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+        };
+
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd);
+    };
+
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = Math.floor(seconds % 60);
@@ -60,7 +86,7 @@ export function Timeline({ duration, playhead, onPlayheadChange }: TimelineProps
             </div>
 
             {/* Tracks Container */}
-            <div className="relative flex-1 overflow-y-auto" ref={timelineRef} onMouseDown={handleMouseDown}>
+            <div className="relative flex-1 overflow-y-auto" ref={timelineRef} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}>
                 {tracks.map(trackNum => (
                     <div key={trackNum} className="relative w-full h-8 min-h-[2rem] border-b border-gray-300 dark:border-gray-600 last:border-b-0 flex items-center px-2">
                         <span className="text-xs text-gray-500 mr-2">Track {trackNum}</span>

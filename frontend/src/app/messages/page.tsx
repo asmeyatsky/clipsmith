@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Send, Search, Circle, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { MessageSquare, Send, Search, Circle, Loader2, AlertCircle, LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { socialService, Conversation as APIConversation, DirectMessage } from '@/lib/api/social';
@@ -196,9 +196,9 @@ export default function MessagesPage() {
       </h1>
 
       <Card className="overflow-hidden">
-        <div className="flex h-[600px]">
+        <div className="flex h-[calc(100dvh-12rem)]">
           {/* Left Sidebar: Conversation List */}
-          <div className="w-80 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
+          <div className={`w-full md:w-80 border-r border-zinc-200 dark:border-zinc-700 flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             {/* Search */}
             <div className="p-3 border-b border-zinc-200 dark:border-zinc-700">
               <div className="relative">
@@ -270,11 +270,19 @@ export default function MessagesPage() {
           </div>
 
           {/* Right Panel: Message Thread */}
-          <div className="flex-1 flex flex-col">
+          <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
             {selectedConversation && currentConversation ? (
               <>
                 {/* Thread Header */}
                 <div className="flex items-center gap-3 p-4 border-b border-zinc-200 dark:border-zinc-700">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden rounded-full flex-shrink-0"
+                    onClick={() => setSelectedConversation(null)}
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white font-medium text-sm">
                     {currentConversation.participantName.charAt(0).toUpperCase()}
                   </div>

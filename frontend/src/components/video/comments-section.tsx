@@ -62,7 +62,7 @@ export function CommentsSection({ videoId, isOpen, onClose }: CommentsSectionPro
             <div className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl shadow-2xl pointer-events-auto flex flex-col max-h-[80vh]">
                 <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center">
                     <h3 className="font-bold text-lg">Comments ({comments.length})</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">Close</button>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center">Close</button>
                 </div>
 
                 <ScrollArea className="flex-1 p-4">

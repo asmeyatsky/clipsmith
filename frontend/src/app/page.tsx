@@ -7,13 +7,14 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight, Play, Zap, Shield, Heart } from 'lucide-react';
 import { VideoFeed } from '@/components/video/video-feed';
-import { CreatorDashboard } from '@/components/CreatorDashboard';
+import CreatorDashboard from '@/components/CreatorDashboard';
 
 export default function Home() {
     const { user } = useAuthStore();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
     }, []);
 
@@ -37,7 +38,7 @@ export default function Home() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="text-6xl md:text-8xl font-black tracking-tight mb-8 leading-[1.1]"
+                        className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tight mb-8 leading-[1.1]"
                     >
                         Create. Share. <br />
                         <span className="bg-gradient-to-r from-blue-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent">
@@ -108,7 +109,7 @@ export default function Home() {
                             <p className="text-sm text-zinc-500">Real-time uploads & processing</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 px-6 py-4 border-l border-zinc-200/50 dark:border-zinc-800/50">
+                    <div className="flex items-center gap-4 px-6 py-4 border-l-0 md:border-l border-zinc-200/50 dark:border-zinc-800/50">
                         <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-500">
                             <Shield size={24} />
                         </div>
@@ -117,7 +118,7 @@ export default function Home() {
                             <p className="text-sm text-zinc-500">Encryption at every layer</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 px-6 py-4 border-l border-zinc-200/50 dark:border-zinc-800/50">
+                    <div className="flex items-center gap-4 px-6 py-4 border-l-0 md:border-l border-zinc-200/50 dark:border-zinc-800/50">
                         <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500">
                             <Heart size={24} />
                         </div>
